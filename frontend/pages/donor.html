@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Donors</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+    header { background: #2d6a4f; color: white; padding: 15px 20px;
+             display: flex; align-items: center; gap: 15px; }
+    header a { color: white; text-decoration: none; font-size: 20px; }
+    header h2 { font-size: 20px; }
+    .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+    .form-box { background: white; padding: 20px; border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+    .form-box h3 { color: #2d6a4f; margin-bottom: 15px; }
+    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    input, select { width: 100%; padding: 9px; border: 1px solid #ccc;
+                    border-radius: 6px; font-size: 14px; }
+    button { margin-top: 15px; padding: 10px 25px; background: #2d6a4f;
+             color: white; border: none; border-radius: 6px;
+             cursor: pointer; font-size: 15px; }
+    button:hover { background: #40916c; }
+    .msg { margin-top: 10px; font-weight: bold; color: green; }
+    table { width: 100%; border-collapse: collapse; background: white;
+            border-radius: 12px; overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    th { background: #2d6a4f; color: white; padding: 12px; text-align: left; }
+    td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+    tr:hover td { background: #f0f4f8; }
+    .del-btn { background: #e63946; color: white; border: none;
+               padding: 5px 12px; border-radius: 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../index.html">←</a>
+    <h2>👤 Donor Management</h2>
+  </header>
+
+  <div class="container">
+    <div class="form-box">
+      <h3>Add New Donor</h3>
+      <div class="form-grid">
+        <input id="did" placeholder="Donor ID (e.g. D4)">
+        <input id="dname" placeholder="Name">
+        <input id="dphone" placeholder="Phone">
+        <input id="demail" placeholder="Email">
+        <select id="dtype">
+          <option value="Individual">Individual</option>
+          <option value="Organization">Organization</option>
+        </select>
+        <input id="dstreet" placeholder="Street">
+        <input id="dcity" placeholder="City">
+        <input id="dpin" placeholder="Pincode">
+      </div>
+      <button onclick="addDonor()">➕ Add Donor</button>
+      <p class="msg" id="msg"></p>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th>
+            <th>Type</th><th>City</th><th>Action</th></tr>
+      </thead>
+      <tbody id="donorTable"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000/api/donors';
+
+    async function loadDonors() {
+      const res = await fetch(API);
+      const data = await res.json();
+      document.getElementById('donorTable').innerHTML = data.map(d => `
+        <tr>
+          <td>${d.Donor_ID}</td><td>${d.Name}</td><td>${d.Phone}</td>
+          <td>${d.Email}</td><td>${d.Donor_Type}</td><td>${d.City}</td>
+          <td><button class="del-btn" onclick="deleteDonor('${d.Donor_ID}')">Delete</button></td>
+        </tr>`).join('');
+    }
+
+    async function addDonor() {
+      const body = {
+        Donor_ID: document.getElementById('did').value,
+        Name: document.getElementById('dname').value,
+        Phone: document.getElementById('dphone').value,
+        Email: document.getElementById('demail').value,
+        Donor_Type: document.getElementById('dtype').value,
+        Street: document.getElementById('dstreet').value,
+        City: document.getElementById('dcity').value,
+        Pincode: document.getElementById('dpin').value
+      };
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      document.getElementById('msg').textContent = data.message || data.error.sqlMessage;
+      loadDonors();
+    }
+
+    async function deleteDonor(id) {
+      if (!confirm('Delete this donor?')) return;
+      await fetch(`${API}/${id}`, { method: 'DELETE' });
+      loadDonors();
+    }
+
+    loadDonors();
+  </script>
+</body>
+</html>
