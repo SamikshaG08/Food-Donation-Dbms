@@ -3,7 +3,7 @@ const mysql = require('mysql2');
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'Samiksha@08',  // 👈 change this!
+  password: '',  // 👈 change this!
   database: 'food_donation_db'
 });
 
