@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
   <meta charset="UTF-8">
   <title>Admin Dashboard</title>
   <style>
@@ -110,6 +112,8 @@
     .badge.available { background: #d1e7dd; color: #0f5132; }
     .badge.busy { background: #fff3cd; color: #856404; }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 </head>
 <body>
 
@@ -256,230 +260,75 @@
     </table>
   </div>
 </div>
+<div style="background:white;padding:20px;margin:20px;border-radius:12px;">
+  <h2 style="color:#1b4332;">🗺 Smart Live Delivery Route</h2>
+  <div id="map" style="height:420px;border-radius:12px;"></div>
+  <p id="routeStatus" style="margin-top:10px;">Loading route...</p>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 
 <script>
-  const role = localStorage.getItem('role');
-  if (!role || role !== 'Admin') window.location.href = '../login.html';
+async function loadLiveMap(){
 
-  const API = 'http://localhost:3000/api';
+const locationMap = {
+"Karvenagar":[18.4898,73.8078],
+"Viman Nagar":[18.5679,73.9143],
+"Kothrud":[18.5074,73.8077],
+"Hinjewadi":[18.5912,73.7389],
+"Wakad":[18.5995,73.7636],
+"Hadapsar":[18.5089,73.9260],
+"Shivajinagar":[18.5308,73.8475]
+};
+// fallback demo data
+let donorCity = "Karvenagar";
+let recipientCity = "Viman Nagar";
+try{
 
-  window.onload = () => {
-    loadStats();
-    loadPending();
-    loadDonors();
-    loadVolunteers();
-    loadRecipients();
-    loadDeliveries();
-    loadNGOs();
-    loadRequests();  // ← add this
+const donations = await fetch('http://localhost:3000/api/donations').then(r=>r.json());
+const donors = await fetch('http://localhost:3000/api/donors').then(r=>r.json());
+const recipients = await fetch('http://localhost:3000/api/recipients').then(r=>r.json());
 
-  };
+if(donations.length && donors.length && recipients.length){
 
-  function showTab(tab, btn) {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
-    btn.classList.add('active');
-  }
-  async function loadRequests() {
-  const data = await fetch(`${API}/foodrequests`).then(r => r.json());
+const donation = donations[0];
+const donor = donors.find(d => d.Donor_ID === donation.Donor_ID) || donors[0];
+const recipient = recipients[0];
 
-  if (data.length === 0) {
-    document.getElementById('requestTable').innerHTML =
-      '<tr><td colspan="7" style="text-align:center;color:#888">No requests yet!</td></tr>';
-    return;
-  }
-
-  document.getElementById('requestTable').innerHTML = data.map(r => `
-    <tr>
-      <td>${r.Request_ID}</td>
-      <td>${r.Recipient_Name}</td>
-      <td>${r.Food_Name}</td>
-      <td>${r.Quantity_Needed}</td>
-      <td>${new Date(r.Request_Date).toLocaleDateString()}</td>
-      <td><span class="badge ${
-        r.Status === 'Approved' ? 'delivered' :
-        r.Status === 'Rejected' ? 'pending' : 'collected'}">
-        ${r.Status}</span></td>
-      <td>
-        ${r.Status === 'Pending' ? `
-          <button class="assign-btn" style="background:#40916c;margin-right:5px"
-            onclick="updateRequest('${r.Request_ID}','Approved')">
-            ✅ Approve
-          </button>
-          <button class="assign-btn" style="background:#e63946"
-            onclick="updateRequest('${r.Request_ID}','Rejected')">
-            ❌ Reject
-          </button>` :
-          '<span style="color:#888;font-size:12px">Done</span>'}
-      </td>
-    </tr>`).join('');
+donorCity = donor.City;
+recipientCity = recipient.Location;
 }
 
-async function updateRequest(requestId, status) {
-  const res = await fetch(`${API}/foodrequests/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ Request_ID: requestId, Status: status })
-  });
-  const data = await res.json();
-  alert(data.message);
-  loadRequests();
+}catch(err){
+console.log("Using fallback demo data");
 }
 
-  function logout() {
-    localStorage.clear();
-    window.location.href = '../login.html';
-  }
+const donorCoords = locationMap[donorCity];
+const recipientCoords = locationMap[recipientCity];
 
-  async function loadStats() {
-    const [donors, donations, volunteers] = await Promise.all([
-      fetch(`${API}/donors`).then(r => r.json()),
-      fetch(`${API}/donations`).then(r => r.json()),
-      fetch(`${API}/volunteers`).then(r => r.json())
-    ]);
-    document.getElementById('totalDonors').textContent = donors.length;
-    document.getElementById('totalDonations').textContent = donations.length;
-    document.getElementById('totalVolunteers').textContent = volunteers.length;
-    const pending = donations.filter(d => d.Status === 'Pending');
-    document.getElementById('pendingDonations').textContent = pending.length;
-  }
+var map = L.map('map').setView(donorCoords,10);
 
-  async function loadPending() {
-    const [donations, volunteers] = await Promise.all([
-      fetch(`${API}/donations`).then(r => r.json()),
-      fetch(`${API}/volunteers`).then(r => r.json())
-    ]);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    const pending = donations.filter(d => d.Status === 'Pending');
-    const volOptions = volunteers.map(v =>
-      `<option value="${v.Volunteer_ID}">
-        ${v.Name} (${v.Area_Assigned}) ⭐${parseFloat(v.Rating||0).toFixed(1)}
-       </option>`
-    ).join('');
+L.marker(donorCoords).addTo(map).bindPopup("📦 Donor");
+L.marker(recipientCoords).addTo(map).bindPopup("🏠 Recipient");
 
-    if (pending.length === 0) {
-      document.getElementById('pendingList').innerHTML =
-        '<p style="color:green;text-align:center;padding:20px">✅ No pending donations!</p>';
-      return;
-    }
+L.Routing.control({
+waypoints:[
+L.latLng(donorCoords[0], donorCoords[1]),
+L.latLng(recipientCoords[0], recipientCoords[1])
+],
+routeWhileDragging:false,
+addWaypoints:false
+}).addTo(map);
 
-    document.getElementById('pendingList').innerHTML = pending.map(d => `
-      <div class="pending-card">
-        <div class="info">
-          <b>Donation ${d.Donation_ID}</b> — Donor: ${d.Donor_ID}<br>
-          📅 ${new Date(d.Donation_Date).toLocaleDateString()}
-          🕐 ${d.Pickup_Time}
-          <span class="badge pending">Pending</span>
-        </div>
-        <div>
-          <select id="vol_${d.Donation_ID}">${volOptions}</select>
-          <button class="assign-btn"
-            onclick="assignVolunteer('${d.Donation_ID}')">
-            Assign Volunteer
-          </button>
-        </div>
-      </div>`).join('');
-  }
+document.getElementById("routeStatus").innerText =
+"Route: " + donorCity + " → " + recipientCity;
 
-  async function assignVolunteer(donationId) {
-    const volId = document.getElementById(`vol_${donationId}`).value;
-    const res = await fetch(`${API}/donations/assign`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ Donation_ID: donationId, Volunteer_ID: volId })
-    });
-    const data = await res.json();
-    alert(data.message || data.error);
-    loadPending();
-    loadStats();
-  }
+}
 
-  async function loadDonors() {
-    const data = await fetch(`${API}/donors`).then(r => r.json());
-    document.getElementById('donorTable').innerHTML = data.map(d => `
-      <tr>
-        <td>${d.Donor_ID}</td><td>${d.Name}</td><td>${d.Phone}</td>
-        <td>${d.Email}</td><td>${d.Donor_Type}</td><td>${d.City}</td>
-      </tr>`).join('');
-  }
-
-  async function loadVolunteers() {
-    const data = await fetch(`${API}/volunteers`).then(r => r.json());
-    // Sort by rating highest first
-    data.sort((a, b) => (b.Rating || 0) - (a.Rating || 0));
-    document.getElementById('volunteerTable').innerHTML = data.map((v, index) => {
-      const rating = parseFloat(v.Rating) || 0;
-      const stars = rating > 0 ? '⭐'.repeat(Math.round(rating)) : '—';
-      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index+1}`;
-      return `<tr>
-        <td style="font-size:18px">${medal}</td>
-        <td>${v.Volunteer_ID}</td>
-        <td><b>${v.Name}</b></td>
-        <td>${v.Area_Assigned}</td>
-        <td><span class="badge ${v.Availability_Status === 'Available' 
-            ? 'available' : 'busy'}">
-          ${v.Availability_Status}</span></td>
-        <td>${v.NGO_ID}</td>
-        <td>
-          <span class="stars">${stars}</span>
-          <span class="rating-badge">${rating.toFixed(1)}</span>
-        </td>
-        <td>${v.Total_Deliveries || 0}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  async function loadRecipients() {
-    const data = await fetch(`${API}/recipients`).then(r => r.json());
-    document.getElementById('recipientTable').innerHTML = data.map(r => `
-      <tr>
-        <td>${r.Recipient_ID}</td><td>${r.Name}</td>
-        <td>${r.Contact}</td><td>${r.Location}</td>
-      </tr>`).join('');
-  }
-
-  async function loadDeliveries() {
-    const [data, volunteers] = await Promise.all([
-      fetch(`${API}/distributions`).then(r => r.json()),
-      fetch(`${API}/volunteers`).then(r => r.json())
-    ]);
-
-    document.getElementById('deliveryTable').innerHTML = data.map(d => {
-      const vol = volunteers.find(v => v.Volunteer_ID === d.Volunteer_ID);
-      const rating = parseFloat(vol?.Rating) || 0;
-      const stars = rating > 0 ? '⭐'.repeat(Math.round(rating)) : '—';
-
-      return `<tr>
-        <td>${d.Food_ID}</td>
-        <td>${d.Recipient_ID}</td>
-        <td>${d.Volunteer_ID}</td>
-        <td>${new Date(d.Distribution_Date).toLocaleDateString()}</td>
-        <td>${d.Quantity_Distribution}</td>
-        <td><span class="badge ${
-            d.Delivery_Status === 'Delivered' ? 'delivered' :
-            d.Delivery_Status === 'InTransit' ? 'collected' : 'pending'}">
-          ${d.Delivery_Status || 'Pending'}</span></td>
-        <td>
-          ${d.Delivery_Status === 'Delivered' ? `
-            <div style="font-size:16px">${stars}</div>
-            <div style="font-size:12px;color:#888">
-              ${rating.toFixed(1)}/5 (by Recipient)
-            </div>` :
-            '<span style="color:#aaa;font-size:12px">⏳ Not delivered yet</span>'}
-        </td>
-      </tr>`;
-    }).join('');
-  }
-
-  async function loadNGOs() {
-    const data = await fetch(`${API}/ngos`).then(r => r.json());
-    document.getElementById('ngoTable').innerHTML = data.map(n => `
-      <tr>
-        <td>${n.NGO_ID}</td><td>${n.NGO_Name}</td>
-        <td>${n.ContactNo}</td><td>${n.Address}</td><td>${n.Capacity}</td>
-      </tr>`).join('');
-  }
+window.onload = loadLiveMap;
 </script>
 </body>
 </html>
