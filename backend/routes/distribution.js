@@ -19,4 +19,18 @@ router.post('/', (req, res) => {
     });
 });
 
+// PUT update delivery status
+router.put('/status', (req, res) => {
+  const { Food_ID, Recipient_ID, Volunteer_ID, Delivery_Status } = req.body;
+  db.query(
+    `UPDATE Distributes SET Delivery_Status = ?
+     WHERE Food_ID = ? AND Recipient_ID = ? AND Volunteer_ID = ?`,
+    [Delivery_Status, Food_ID, Recipient_ID, Volunteer_ID],
+    (err) => {
+      if (err) return res.status(500).json({ error: err });
+      res.json({ message: `Status updated to ${Delivery_Status}!` });
+    }
+  );
+});
+
 module.exports = router;

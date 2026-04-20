@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Volunteer Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+    header {
+      background: #1b4332;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 20px; }
+    .logout {
+      background: #e63946;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .container { max-width: 900px; margin: 25px auto; padding: 0 20px; }
+    .welcome {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 5px solid #40916c;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .welcome h2 { color: #1b4332; }
+    .welcome p { color: #888; font-size: 14px; margin-top: 5px; }
+    .rating-box { text-align: center; }
+    .rating-box .stars { font-size: 24px; }
+    .rating-box .label { font-size: 12px; color: #888; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 4px solid #40916c;
+    }
+    .stat-card .num { font-size: 28px; font-weight: bold; color: #1b4332; }
+    .stat-card .label { color: #888; font-size: 13px; }
+    .section-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    .section-box h3 { color: #1b4332; margin-bottom: 15px; }
+    .delivery-card {
+      border: 1px solid #b7e4c7;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      background: #f8fff9;
+    }
+    .delivery-card .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .delivery-card .info { font-size: 14px; line-height: 1.8; }
+    .delivery-card .info b { color: #1b4332; }
+    .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .btn-pickup { background: #fff3cd; color: #856404; }
+    .btn-transit { background: #cfe2ff; color: #084298; }
+    .btn-deliver { background: #d1e7dd; color: #0f5132; }
+    .btn:hover { opacity: 0.8; }
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge.pending { background: #fff3cd; color: #856404; }
+    .badge.pickedup { background: #cfe2ff; color: #084298; }
+    .badge.intransit { background: #d1ecf1; color: #0c5460; }
+    .badge.delivered { background: #d1e7dd; color: #0f5132; }
+    /* Map */
+    #map {
+      width: 100%;
+      height: 350px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    .map-info {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #555;
+    }
+    .map-info span {
+      background: #f0f4f8;
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🙋 Volunteer Dashboard</h1>
+  <button class="logout" onclick="logout()">Logout</button>
+</header>
+
+<div class="container">
+
+  <!-- Welcome + Rating -->
+  <div class="welcome">
+    <div>
+      <h2>Welcome, <span id="volName">Volunteer</span>! 👋</h2>
+      <p>Manage your assigned pickups and deliveries.</p>
+    </div>
+    <div class="rating-box">
+      <div class="stars" id="volStars">—</div>
+      <div class="label">Your Rating</div>
+      <div style="font-size:20px;font-weight:bold;color:#1b4332" id="volRating">0.0</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="totalAssigned">0</div>
+      <div class="label">📦 Assigned</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="inTransitCount">0</div>
+      <div class="label">🚚 In Transit</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="deliveredCount">0</div>
+      <div class="label">✅ Delivered</div>
+    </div>
+  </div>
+
+  <!-- Assigned Deliveries -->
+  <div class="section-box">
+    <h3>📦 My Assigned Deliveries</h3>
+    <div id="deliveryList">Loading...</div>
+  </div>
+
+  <!-- Map -->
+  <div class="section-box">
+    <h3>🗺️ Delivery Map</h3>
+    <div class="map-info">
+      <span>🔵 Your Location</span>
+      <span>🔴 Recipient Location</span>
+      <span>🟡 Donor Location</span>
+    </div>
+    <div id="map"></div>
+  </div>
+
+</div>
+
+<script>
+  // Check role
+  const role = localStorage.getItem('role');
+  if (!role || role !== 'Volunteer') window.location.href = '../login.html';
+
+  const volId = localStorage.getItem('ref_id');
+  const username = localStorage.getItem('username');
+  const API = 'http://localhost:3000/api';
+  let map, volunteerMarker, recipientMarkers = [];
+
+  window.onload = () => {
+    document.getElementById('volName').textContent = username;
+    loadVolunteerInfo();
+    loadDeliveries();
+    initMap();
+  };
+
+  function logout() {
+    localStorage.clear();
+    window.location.href = '../login.html';
+  }
+
+  async function loadVolunteerInfo() {
+    const data = await fetch(`${API}/volunteers`).then(r => r.json());
+    const vol = data.find(v => v.Volunteer_ID === volId);
+    if (vol) {
+      const rating = parseFloat(vol.Rating) || 0;
+      document.getElementById('volRating').textContent = rating.toFixed(1);
+      document.getElementById('volStars').textContent = '⭐'.repeat(Math.round(rating)) || '—';
+    }
+  }
+
+  async function loadDeliveries() {
+  const [distributions, donations] = await Promise.all([
+    fetch(`${API}/distributions`).then(r => r.json()),
+    fetch(`${API}/donations`).then(r => r.json())
+  ]);
+
+  // Get deliveries from Distributes table
+  const distDeliveries = distributions.filter(d => d.Volunteer_ID === volId);
+
+  // Get assigned donations from Donation_Details table
+  const assignedDonations = donations.filter(d => d.Volunteer_ID === volId);
+
+  document.getElementById('totalAssigned').textContent =
+    distDeliveries.length + assignedDonations.length;
+  document.getElementById('inTransitCount').textContent =
+    distDeliveries.filter(d => d.Delivery_Status === 'InTransit').length;
+  document.getElementById('deliveredCount').textContent =
+    distDeliveries.filter(d => d.Delivery_Status === 'Delivered').length;
+
+  let html = '';
+
+  // Show assigned donations (from Donation_Details)
+  if (assignedDonations.length > 0) {
+    html += assignedDonations.map(d => `
+      <div class="delivery-card">
+        <div class="top">
+          <div class="info">
+            <b>Donation:</b> ${d.Donation_ID} &nbsp;|&nbsp;
+            <b>Donor:</b> ${d.Donor_ID} &nbsp;|&nbsp;
+            <b>Date:</b> ${new Date(d.Donation_Date).toLocaleDateString()}<br>
+            <b>Pickup Time:</b> ${d.Pickup_Time}
+          </div>
+          <span class="badge pending">Assigned — Pickup Pending</span>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-pickup"
+            onclick="markPickedUp('${d.Donation_ID}')">
+            📦 Mark Picked Up
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  // Show distributions (from Distributes table)
+  if (distDeliveries.length > 0) {
+    html += distDeliveries.map(d => `
+      <div class="delivery-card">
+        <div class="top">
+          <div class="info">
+            <b>Food:</b> ${d.Food_ID} &nbsp;|&nbsp;
+            <b>Recipient:</b> ${d.Recipient_ID} &nbsp;|&nbsp;
+            <b>Quantity:</b> ${d.Quantity_Distribution}<br>
+            <b>Date:</b> ${new Date(d.Distribution_Date).toLocaleDateString()}
+          </div>
+          <span class="badge ${(d.Delivery_Status||'pending').toLowerCase()}">
+            ${d.Delivery_Status || 'Pending'}
+          </span>
+        </div>
+        <div class="btn-group">
+          ${d.Delivery_Status === 'Pending' ? `
+            <button class="btn btn-pickup"
+              onclick="updateStatus('${d.Food_ID}','${d.Recipient_ID}','PickedUp')">
+              📦 Mark Picked Up
+            </button>` : ''}
+          ${d.Delivery_Status === 'PickedUp' ? `
+            <button class="btn btn-transit"
+              onclick="updateStatus('${d.Food_ID}','${d.Recipient_ID}','InTransit')">
+              🚚 Start Delivery
+            </button>` : ''}
+          ${d.Delivery_Status === 'InTransit' ? `
+            <button class="btn btn-deliver"
+              onclick="updateStatus('${d.Food_ID}','${d.Recipient_ID}','Delivered')">
+              ✅ Mark Delivered
+            </button>` : ''}
+          ${d.Delivery_Status === 'Delivered' ?
+            '<span style="color:green">✅ Delivery Complete!</span>' : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  if (html === '') {
+    html = '<p style="text-align:center;color:#888">No deliveries assigned yet!</p>';
+  }
+
+  document.getElementById('deliveryList').innerHTML = html;
+}
+
+// ← ADD HERE
+  async function markPickedUp(donationId) {
+    const res = await fetch(`${API}/donations/assign`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Donation_ID: donationId,
+        Volunteer_ID: volId
+      })
+    });
+    const data = await res.json();
+    alert('📦 Marked as Picked Up!');
+    loadDeliveries();
+  }
+
+ 
+
+    async function updateStatus(foodId, recipientId, status) {
+    const res = await fetch(`${API}/distributions/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Food_ID: foodId,
+        Recipient_ID: recipientId,
+        Volunteer_ID: volId,
+        Delivery_Status: status
+      })
+    });
+    const data = await res.json();
+
+    // If delivered — send notification to recipient
+    if (status === 'Delivered') {
+      await fetch(`${API}/notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Recipient_ID: recipientId,
+          Message: '✅ Your food has been delivered! Please confirm receipt.'
+        })
+      });
+    }
+
+    // If InTransit — start location tracking
+    if (status === 'InTransit') {
+      startTracking(foodId);
+    }
+
+    alert(data.message);
+    loadDeliveries();
+  }
+
+  // Location tracking
+  function startTracking(donationId) {
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        // Update location on server
+        fetch(`${API}/tracking/update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Volunteer_ID: volId,
+            Latitude: latitude,
+            Longitude: longitude,
+            Donation_ID: donationId
+          })
+        });
+        // Update map marker
+        if (volunteerMarker) {
+          volunteerMarker.setPosition({ lat: latitude, lng: longitude });
+          map.panTo({ lat: latitude, lng: longitude });
+        }
+      });
+    }
+  }
+
+  // Google Maps
+  function initMap() {
+    // Default center — Pune
+    const pune = { lat: 18.5204, lng: 73.8567 };
+    map = new google.maps.Map(document.getElementById('map'), {
+      zoom: 13,
+      center: pune
+    });
+
+    // Show volunteer current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const volPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        volunteerMarker = new google.maps.Marker({
+          position: volPos,
+          map,
+          title: 'Your Location',
+          icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+        });
+        map.setCenter(volPos);
+      });
+    }
+
+    // Load recipient locations
+    loadRecipientMarkers();
+  }
+
+  async function loadRecipientMarkers() {
+    const data = await fetch(`${API}/recipients`).then(r => r.json());
+    data.forEach(r => {
+      if (r.Latitude && r.Longitude) {
+        const marker = new google.maps.Marker({
+          position: { lat: parseFloat(r.Latitude), lng: parseFloat(r.Longitude) },
+          map,
+          title: `Recipient: ${r.Name}`,
+          icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+        });
+        const infoWindow = new google.maps.InfoWindow({
+          content: `<b>${r.Name}</b><br>${r.Location}<br>📞 ${r.Contact}`
+        });
+        marker.addListener('click', () => infoWindow.open(map, marker));
+      }
+    });
+  }
+</script>
+
+<!-- Replace YOUR_API_KEY with your Google Maps API key -->
+<script>
+  function initMap() {
+    document.getElementById('map').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;
+        height:100%;color:#888;flex-direction:column;gap:10px">
+        <div style="font-size:40px">🗺️</div>
+        <div style="font-size:14px">Map coming soon!</div>
+        <div style="font-size:12px">Google Maps API key needed</div>
+      </div>`;
+  }
+  initMap();
+</script>
+</body>
+</html>

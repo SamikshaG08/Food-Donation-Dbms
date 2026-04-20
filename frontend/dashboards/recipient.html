@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recipient Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+    header {
+      background: #1b4332;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 20px; }
+    .logout {
+      background: #e63946;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .container { max-width: 900px; margin: 25px auto; padding: 0 20px; }
+    .welcome {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 5px solid #40916c;
+    }
+    .welcome h2 { color: #1b4332; }
+    .welcome p { color: #888; font-size: 14px; margin-top: 5px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 4px solid #40916c;
+    }
+    .stat-card .num { font-size: 28px; font-weight: bold; color: #1b4332; }
+    .stat-card .label { color: #888; font-size: 13px; }
+    .section-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    .section-box h3 { color: #1b4332; margin-bottom: 15px; }
+    .notif-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .notif-card.unread {
+      background: #fff8e1;
+      border-left: 4px solid #ffd54f;
+    }
+    .notif-card.read {
+      background: #f0f4f8;
+      border-left: 4px solid #ccc;
+      color: #888;
+    }
+    .notif-card .time { font-size: 11px; color: #aaa; }
+    .mark-btn {
+      background: #1b4332;
+      color: white;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .food-card {
+      border: 1px solid #b7e4c7;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      background: #f8fff9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .food-card .info { font-size: 14px; line-height: 1.8; }
+    .food-card .info b { color: #1b4332; }
+    .request-card {
+      border: 1px solid #b7e4c7;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      background: #f8fff9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .confirm-btn {
+      background: #40916c;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .confirm-btn:hover { background: #1b4332; }
+    .confirmed { color: green; font-weight: bold; font-size: 13px; }
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge.pending { background: #fff3cd; color: #856404; }
+    .badge.intransit { background: #d1ecf1; color: #0c5460; }
+    .badge.delivered { background: #d1e7dd; color: #0f5132; }
+    .badge.approved { background: #d1e7dd; color: #0f5132; }
+    .badge.rejected { background: #f8d7da; color: #842029; }
+    #map {
+      width: 100%;
+      height: 300px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notif-count {
+      background: #e63946;
+      color: white;
+      border-radius: 50%;
+      padding: 2px 7px;
+      font-size: 12px;
+      margin-left: 5px;
+    }
+    .request-form {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .request-form select,
+    .request-form input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .request-form select:focus,
+    .request-form input:focus {
+      outline: none;
+      border-color: #40916c;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 10px;
+      background: #1b4332;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .submit-btn:hover { background: #40916c; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🤝 Recipient Dashboard</h1>
+  <button class="logout" onclick="logout()">Logout</button>
+</header>
+
+<div class="container">
+
+  <!-- Welcome -->
+  <div class="welcome">
+    <h2>Welcome, <span id="recName">Recipient</span>! 👋</h2>
+    <p>Request food, track deliveries and notifications here.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="totalRequests">0</div>
+      <div class="label">📋 My Requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="incomingCount">0</div>
+      <div class="label">🚚 On The Way</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="receivedCount">0</div>
+      <div class="label">✅ Received</div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="section-box">
+    <h3>🔔 Notifications
+      <span class="notif-count" id="unreadCount">0</span>
+    </h3>
+    <div id="notifList">Loading...</div>
+  </div>
+
+  <!-- Request Food -->
+  <div class="section-box">
+    <h3>🍱 Request Food</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:15px">
+      Select food item and quantity you need
+    </p>
+    <div class="request-form">
+      <select id="req_food">
+        <option value="">🍽️ Select Food Item</option>
+      </select>
+      <input id="req_qty" placeholder="📦 Quantity (e.g. 2 kg)">
+      <button class="submit-btn" onclick="requestFood()">
+        📩 Submit Request
+      </button>
+    </div>
+    <p id="reqMsg" style="font-size:13px;min-height:20px"></p>
+  </div>
+
+  <!-- My Requests -->
+  <div class="section-box">
+    <h3>📋 My Food Requests</h3>
+    <div id="requestList">Loading...</div>
+  </div>
+
+  <!-- My Food Deliveries -->
+  <div class="section-box">
+    <h3>🚚 My Food Deliveries</h3>
+    <div id="foodList">Loading...</div>
+  </div>
+
+  <!-- Volunteer Location Map -->
+  <div class="section-box">
+    <h3>🗺️ Volunteer Location</h3>
+    <p style="font-size:13px;color:#888;margin-bottom:10px">
+      Track your volunteer's real-time location below
+    </p>
+    <div id="map">
+      <div style="text-align:center;color:#888">
+        <div style="font-size:40px">🗺️</div>
+        <div style="font-size:14px">Map coming soon!</div>
+        <div style="font-size:12px">Google Maps API key needed</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const role = localStorage.getItem('role');
+  if (!role || role !== 'Recipient') window.location.href = '../login.html';
+
+  const recipientId = localStorage.getItem('ref_id');
+  const username = localStorage.getItem('username');
+  const API = 'http://localhost:3000/api';
+
+  window.onload = () => {
+    document.getElementById('recName').textContent = username;
+    loadNotifications();
+    loadFoodItems();
+    loadMyRequests();
+    loadFoodDeliveries();
+    setInterval(() => {
+      loadNotifications();
+      loadMyRequests();
+      loadFoodDeliveries();
+    }, 30000);
+  };
+
+  function logout() {
+    localStorage.clear();
+    window.location.href = '../login.html';
+  }
+
+  // ─── NOTIFICATIONS ───────────────────────────────
+  async function loadNotifications() {
+    try {
+      const data = await fetch(
+        `${API}/notifications/${recipientId}`
+      ).then(r => r.json());
+
+      const unread = data.filter(n => !n.Is_Read);
+      document.getElementById('unreadCount').textContent = unread.length;
+
+      if (data.length === 0) {
+        document.getElementById('notifList').innerHTML =
+          '<p style="text-align:center;color:#888">No notifications yet!</p>';
+        return;
+      }
+
+      document.getElementById('notifList').innerHTML = data.map(n => `
+        <div class="notif-card ${n.Is_Read ? 'read' : 'unread'}">
+          <div>
+            <div>${n.Message}</div>
+            <div class="time">
+              ${new Date(n.Created_At).toLocaleString()}
+            </div>
+          </div>
+          ${!n.Is_Read ? `
+            <button class="mark-btn"
+              onclick="markRead(${n.Notification_ID})">
+              Mark Read
+            </button>` :
+            '<span style="font-size:12px">Read ✓</span>'}
+        </div>`).join('');
+    } catch(e) {
+      document.getElementById('notifList').innerHTML =
+        '<p style="text-align:center;color:#888">No notifications yet!</p>';
+    }
+  }
+
+  async function markRead(id) {
+    await fetch(`${API}/notifications/read/${id}`, { method: 'PUT' });
+    loadNotifications();
+  }
+
+  // ─── FOOD ITEMS DROPDOWN ─────────────────────────
+  async function loadFoodItems() {
+    try {
+      const data = await fetch(`${API}/foods`).then(r => r.json());
+      const select = document.getElementById('req_food');
+      data.forEach(f => {
+        select.innerHTML += `
+          <option value="${f.Food_ID}">
+            ${f.Food_Name} (${f.Food_Type}) — ${f.Shelf_Life}
+          </option>`;
+      });
+    } catch(e) {
+      console.error('Error loading food items:', e);
+    }
+  }
+
+  // ─── REQUEST FOOD ─────────────────────────────────
+  async function requestFood() {
+    const foodId = document.getElementById('req_food').value;
+    const qty = document.getElementById('req_qty').value.trim();
+    const msgEl = document.getElementById('reqMsg');
+
+    if (!foodId) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = '⚠️ Please select a food item!';
+      return;
+    }
+    if (!qty) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = '⚠️ Please enter quantity needed!';
+      return;
+    }
+
+    const Request_ID = 'REQ' + Math.floor(Math.random() * 9000 + 1000);
+
+    try {
+      const res = await fetch(`${API}/foodrequests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Request_ID,
+          Recipient_ID: recipientId,
+          Food_ID: foodId,
+          Quantity_Needed: qty
+        })
+      });
+      const data = await res.json();
+
+      if (data.message) {
+        msgEl.style.color = 'green';
+        msgEl.textContent = '✅ ' + data.message;
+        document.getElementById('req_food').value = '';
+        document.getElementById('req_qty').value = '';
+        loadMyRequests();
+        // Update stats
+        const total = document.getElementById('totalRequests');
+        total.textContent = parseInt(total.textContent) + 1;
+      } else {
+        msgEl.style.color = 'red';
+        msgEl.textContent = '❌ ' + data.error;
+      }
+    } catch(e) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = '❌ Server error!';
+    }
+  }
+
+  // ─── MY REQUESTS ──────────────────────────────────
+  async function loadMyRequests() {
+    try {
+      const data = await fetch(
+        `${API}/foodrequests/my/${recipientId}`
+      ).then(r => r.json());
+
+      document.getElementById('totalRequests').textContent = data.length;
+
+      if (data.length === 0) {
+        document.getElementById('requestList').innerHTML =
+          '<p style="text-align:center;color:#888">No requests yet!</p>';
+        return;
+      }
+
+      document.getElementById('requestList').innerHTML = data.map(r => `
+        <div class="request-card">
+          <div style="font-size:14px;line-height:1.8">
+            <b style="color:#1b4332">${r.Food_Name}</b>
+            (${r.Food_Type})<br>
+            📦 Quantity Needed: ${r.Quantity_Needed}<br>
+            📅 Requested: ${new Date(r.Request_Date).toLocaleDateString()}<br>
+            ⏳ Shelf Life: ${r.Shelf_Life}
+          </div>
+          <span class="badge ${r.Status.toLowerCase()}">
+            ${r.Status === 'Approved' ? '✅ Approved' :
+              r.Status === 'Rejected' ? '❌ Rejected' : '⏳ Pending'}
+          </span>
+        </div>`).join('');
+    } catch(e) {
+      document.getElementById('requestList').innerHTML =
+        '<p style="text-align:center;color:#888">No requests yet!</p>';
+    }
+  }
+
+  // ─── FOOD DELIVERIES ──────────────────────────────
+  async function loadFoodDeliveries() {
+    try {
+      const data = await fetch(`${API}/distributions`).then(r => r.json());
+      const myFood = data.filter(d => d.Recipient_ID === recipientId);
+
+      document.getElementById('incomingCount').textContent =
+        myFood.filter(d => d.Delivery_Status === 'InTransit').length;
+      document.getElementById('receivedCount').textContent =
+        myFood.filter(d => d.Delivery_Status === 'Delivered').length;
+
+      if (myFood.length === 0) {
+        document.getElementById('foodList').innerHTML =
+          '<p style="text-align:center;color:#888">No food deliveries yet!</p>';
+        return;
+      }
+
+      document.getElementById('foodList').innerHTML = myFood.map(d => `
+        <div class="food-card">
+          <div class="info">
+            <b>Food ID:</b> ${d.Food_ID}<br>
+            <b>Quantity:</b> ${d.Quantity_Distribution}<br>
+            <b>Volunteer:</b> ${d.Volunteer_ID}<br>
+            <b>Date:</b> ${new Date(d.Distribution_Date).toLocaleDateString()}
+          </div>
+          <div style="text-align:center">
+            <span class="badge ${(d.Delivery_Status||'pending').toLowerCase()}">
+              ${d.Delivery_Status || 'Pending'}
+            </span><br><br>
+            ${d.Delivery_Status === 'Delivered' ? `
+              <span class="confirmed">✅ Food Received!</span><br><br>
+              <div style="margin-top:8px">
+                <div style="font-size:13px;color:#555;margin-bottom:5px">
+                  Rate Volunteer:
+                </div>
+                <div style="display:flex;gap:5px;justify-content:center">
+                  ${[1,2,3,4,5].map(star => `
+                    <span
+                      id="star_${d.Food_ID}_${star}"
+                      onclick="setRating('${d.Food_ID}',
+                        '${d.Volunteer_ID}',${star})"
+                      style="font-size:24px;cursor:pointer;opacity:0.4"
+                      onmouseover="hoverStars('${d.Food_ID}',${star})"
+                      onmouseout="resetStars('${d.Food_ID}')">
+                      ⭐
+                    </span>`).join('')}
+                </div>
+                <div style="font-size:12px;color:#aaa;margin-top:5px"
+                  id="ratingMsg_${d.Food_ID}">
+                  Click a star to rate
+                </div>
+              </div>` : `
+              <button class="confirm-btn"
+                onclick="confirmReceived('${d.Food_ID}',
+                  '${d.Volunteer_ID}')">
+                ✅ Confirm Received
+              </button>`}
+          </div>
+        </div>`).join('');
+    } catch(e) {
+      document.getElementById('foodList').innerHTML =
+        '<p style="text-align:center;color:red">Error loading deliveries!</p>';
+    }
+  }
+
+  // ─── CONFIRM RECEIVED ─────────────────────────────
+  async function confirmReceived(foodId, volunteerId) {
+    await fetch(`${API}/distributions/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Food_ID: foodId,
+        Recipient_ID: recipientId,
+        Volunteer_ID: volunteerId,
+        Delivery_Status: 'Delivered'
+      })
+    });
+
+    await fetch(`${API}/notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Recipient_ID: recipientId,
+        Message: '✅ You confirmed food receipt! Please rate your volunteer.'
+      })
+    });
+
+    alert('✅ Thank you for confirming!');
+    loadFoodDeliveries();
+    loadNotifications();
+  }
+
+  // ─── STAR RATING ──────────────────────────────────
+  function hoverStars(foodId, star) {
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`star_${foodId}_${i}`);
+      if (el) el.style.opacity = i <= star ? '1' : '0.4';
+    }
+  }
+
+  function resetStars(foodId) {
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`star_${foodId}_${i}`);
+      if (el) el.style.opacity = '0.4';
+    }
+  }
+
+  async function setRating(foodId, volunteerId, rating) {
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`star_${foodId}_${i}`);
+      if (el) {
+        el.style.opacity = i <= rating ? '1' : '0.4';
+        el.style.pointerEvents = 'none';
+      }
+    }
+
+    const res = await fetch(`${API}/volunteers/rate`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Volunteer_ID: volunteerId,
+        Rating: rating
+      })
+    });
+    const data = await res.json();
+
+    const msgEl = document.getElementById(`ratingMsg_${foodId}`);
+    if (msgEl) {
+      msgEl.textContent = `✅ You rated ${rating}/5 — Thank you!`;
+      msgEl.style.color = 'green';
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - Food Donation System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1b4332, #40916c);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      width: 400px;
+      text-align: center;
+    }
+    .logo { font-size: 50px; margin-bottom: 10px; }
+    h2 { color: #1b4332; margin-bottom: 5px; }
+    p { color: #888; font-size: 13px; margin-bottom: 25px; }
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .role-btn {
+      padding: 12px;
+      border: 2px solid #b7e4c7;
+      border-radius: 10px;
+      cursor: pointer;
+      background: white;
+      color: #1b4332;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .role-btn:hover { background: #d8f3dc; }
+    .role-btn.active {
+      background: #1b4332;
+      color: white;
+      border-color: #1b4332;
+    }
+    .role-btn .icon { font-size: 24px; display: block; margin-bottom: 5px; }
+    .input-group {
+      position: relative;
+      margin-bottom: 15px;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .input-group input:focus {
+      outline: none;
+      border-color: #40916c;
+    }
+    .input-group .icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+    }
+    .show-pass {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 16px;
+      color: #888;
+    }
+    button.login-btn {
+      width: 100%;
+      padding: 12px;
+      background: #1b4332;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    button.login-btn:hover { background: #40916c; }
+    .error {
+      color: red;
+      font-size: 13px;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 20px 0;
+    }
+    .forgot {
+      font-size: 12px;
+      color: #40916c;
+      cursor: pointer;
+      text-decoration: underline;
+      float: right;
+      margin-top: -10px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="logo">🍱</div>
+    <h2>Food Donation System</h2>
+    <p>Select your role and login</p>
+
+    <!-- Role Selection -->
+    <div class="role-grid">
+      <button class="role-btn" onclick="selectRole('Admin', this)">
+        <span class="icon">👑</span>Admin
+      </button>
+      <button class="role-btn" onclick="selectRole('Donor', this)">
+        <span class="icon">👤</span>Donor
+      </button>
+      <button class="role-btn" onclick="selectRole('Volunteer', this)">
+        <span class="icon">🙋</span>Volunteer
+      </button>
+      <button class="role-btn" onclick="selectRole('Recipient', this)">
+        <span class="icon">🤝</span>Recipient
+      </button>
+
+      <div style="text-align:center;margin-top:15px;font-size:13px;color:#888">
+  New user? 
+  <a href="register.html" 
+     style="color:#1b4332;font-weight:bold;text-decoration:none">
+    Register here
+  </a>
+</div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Email Input -->
+    <div class="input-group">
+      <span class="icon">📧</span>
+      <input type="email" id="email" placeholder="Enter your email">
+    </div>
+
+    <!-- Password Input -->
+    <div class="input-group">
+      <span class="icon">🔒</span>
+      <input type="password" id="password" placeholder="Enter your password">
+      <span class="show-pass" onclick="togglePassword()">👁️</span>
+    </div>
+
+    <button class="login-btn" onclick="login()">Login →</button>
+    <p class="error" id="error"></p>
+  </div>
+  
+
+  <script>
+    let selectedRole = '';
+
+    function selectRole(role, btn) {
+      selectedRole = role;
+      document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('error').textContent = '';
+    }
+
+    function togglePassword() {
+      const input = document.getElementById('password');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error');
+
+      // Validations
+      if (!selectedRole) {
+        errorEl.textContent = '⚠️ Please select a role first!';
+        return;
+      }
+      if (!email) {
+        errorEl.textContent = '⚠️ Please enter your email!';
+        return;
+      }
+      if (!email.includes('@')) {
+        errorEl.textContent = '⚠️ Please enter a valid email!';
+        return;
+      }
+      if (!password) {
+        errorEl.textContent = '⚠️ Please enter your password!';
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:3000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          errorEl.textContent = '❌ ' + data.error;
+          return;
+        }
+
+        // Verify role matches
+        if (data.role !== selectedRole) {
+          errorEl.textContent = `❌ This email is not registered as ${selectedRole}!`;
+          return;
+        }
+
+        // Save to localStorage
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('ref_id', data.ref_id);
+        localStorage.setItem('username', data.username);
+
+        // Redirect based on role
+        if (data.role === 'Admin')     window.location.href = 'dashboards/admin.html';
+        if (data.role === 'Donor')     window.location.href = 'dashboards/donor.html';
+        if (data.role === 'Volunteer') window.location.href = 'dashboards/volunteer.html';
+        if (data.role === 'Recipient') window.location.href = 'dashboards/recipient.html';
+
+      } catch(err) {
+        errorEl.textContent = '❌ Server not running! Start node server.js';
+      }
+    }
+
+    // Allow Enter key to login
+    document.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
+    });
+  </script>
+</body>
+</html>

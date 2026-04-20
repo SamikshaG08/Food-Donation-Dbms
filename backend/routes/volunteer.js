@@ -26,4 +26,22 @@ router.delete('/:id', (req, res) => {
   });
 });
 
+// PUT rate a volunteer
+router.put('/rate', (req, res) => {
+  const { Volunteer_ID, Rating } = req.body;
+
+  db.query(
+    `UPDATE Volunteer SET 
+     Rating = ROUND((COALESCE(Rating, 0) * Total_Deliveries + ?) 
+              / (Total_Deliveries + 1), 2),
+     Total_Deliveries = Total_Deliveries + 1
+     WHERE Volunteer_ID = ?`,
+    [Rating, Volunteer_ID],
+    (err) => {
+      if (err) return res.status(500).json({ error: err.sqlMessage });
+      res.json({ message: `⭐ Volunteer ${Volunteer_ID} rated ${Rating}/5!` });
+    }
+  );
+});
+
 module.exports = router;

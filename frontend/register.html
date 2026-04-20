@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register - Food Donation System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1b4332, #40916c);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .box {
+      background: white;
+      padding: 35px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      width: 450px;
+    }
+    .logo { text-align: center; font-size: 40px; margin-bottom: 10px; }
+    h2 { text-align: center; color: #1b4332; margin-bottom: 5px; }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .role-btn {
+      padding: 10px;
+      border: 2px solid #b7e4c7;
+      border-radius: 10px;
+      cursor: pointer;
+      background: white;
+      color: #1b4332;
+      font-size: 13px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .role-btn:hover { background: #d8f3dc; }
+    .role-btn.active {
+      background: #1b4332;
+      color: white;
+      border-color: #1b4332;
+    }
+    .role-btn .icon { font-size: 20px; display: block; margin-bottom: 3px; }
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .full-width { grid-column: 1 / -1; }
+    .input-group { position: relative; }
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 10px 10px 10px 35px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .input-group input:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: #40916c;
+    }
+    .input-group .icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+    .register-btn {
+      width: 100%;
+      padding: 12px;
+      background: #1b4332;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .register-btn:hover { background: #40916c; }
+    .msg { text-align: center; margin-top: 10px; font-size: 13px; min-height: 20px; }
+    .msg.success { color: green; }
+    .msg.error { color: red; }
+    .login-link {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 13px;
+      color: #888;
+    }
+    .login-link a { color: #1b4332; font-weight: bold; text-decoration: none; }
+    .divider {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">🍱</div>
+    <h2>Create Account</h2>
+    <p class="subtitle">Register as Donor, Volunteer or Recipient</p>
+
+    <!-- Role Selection -->
+    <div class="role-grid">
+      <button class="role-btn" onclick="selectRole('Donor', this)">
+        <span class="icon">👤</span>Donor
+      </button>
+      <button class="role-btn" onclick="selectRole('Volunteer', this)">
+        <span class="icon">🙋</span>Volunteer
+      </button>
+      <button class="role-btn" onclick="selectRole('Recipient', this)">
+        <span class="icon">🤝</span>Recipient
+      </button>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Donor Form -->
+    <div class="form-section" id="form-Donor">
+      <div class="form-grid">
+        <div class="input-group">
+          <span class="icon">🆔</span>
+          <input id="d_id" placeholder="Donor ID (e.g. D4)">
+        </div>
+        <div class="input-group">
+          <span class="icon">👤</span>
+          <input id="d_name" placeholder="Full Name">
+        </div>
+        <div class="input-group">
+          <span class="icon">📞</span>
+          <input id="d_phone" placeholder="Phone Number">
+        </div>
+        <div class="input-group">
+          <span class="icon">🏠</span>
+          <input id="d_street" placeholder="Street">
+        </div>
+        <div class="input-group">
+          <span class="icon">🏙️</span>
+          <input id="d_city" placeholder="City">
+        </div>
+        <div class="input-group">
+          <span class="icon">📮</span>
+          <input id="d_pincode" placeholder="Pincode">
+        </div>
+        <div class="input-group">
+          <span class="icon">🏢</span>
+          <select id="d_type">
+            <option value="Individual">Individual</option>
+            <option value="Organization">Organization</option>
+          </select>
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">📧</span>
+          <input type="email" id="d_email" placeholder="Email Address">
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">🔒</span>
+          <input type="password" id="d_password" placeholder="Create Password">
+        </div>
+      </div>
+      <button class="register-btn" onclick="register('Donor')">
+        ➕ Register as Donor
+      </button>
+    </div>
+
+    <!-- Volunteer Form -->
+    <div class="form-section" id="form-Volunteer">
+      <div class="form-grid">
+        <div class="input-group">
+          <span class="icon">🆔</span>
+          <input id="v_id" placeholder="Volunteer ID (e.g. V4)">
+        </div>
+        <div class="input-group">
+          <span class="icon">👤</span>
+          <input id="v_name" placeholder="Full Name">
+        </div>
+        <div class="input-group">
+          <span class="icon">📞</span>
+          <input id="v_phone" placeholder="Phone Number">
+        </div>
+        <div class="input-group">
+          <span class="icon">📍</span>
+          <input id="v_area" placeholder="Area Assigned">
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">🏢</span>
+          <select id="v_ngo">
+            <option value="">Select NGO</option>
+          </select>
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">📧</span>
+          <input type="email" id="v_email" placeholder="Email Address">
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">🔒</span>
+          <input type="password" id="v_password" placeholder="Create Password">
+        </div>
+      </div>
+      <button class="register-btn" onclick="register('Volunteer')">
+        ➕ Register as Volunteer
+      </button>
+    </div>
+
+    <!-- Recipient Form -->
+    <div class="form-section" id="form-Recipient">
+      <div class="form-grid">
+        <div class="input-group">
+          <span class="icon">🆔</span>
+          <input id="r_id" placeholder="Recipient ID (e.g. R4)">
+        </div>
+        <div class="input-group">
+          <span class="icon">👤</span>
+          <input id="r_name" placeholder="Full Name">
+        </div>
+        <div class="input-group">
+          <span class="icon">📞</span>
+          <input id="r_contact" placeholder="Contact Number">
+        </div>
+        <div class="input-group">
+          <span class="icon">📍</span>
+          <input id="r_location" placeholder="Location">
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">📧</span>
+          <input type="email" id="r_email" placeholder="Email Address">
+        </div>
+        <div class="input-group full-width">
+          <span class="icon">🔒</span>
+          <input type="password" id="r_password" placeholder="Create Password">
+        </div>
+      </div>
+      <button class="register-btn" onclick="register('Recipient')">
+        ➕ Register as Recipient
+      </button>
+    </div>
+
+    <p class="msg" id="msg"></p>
+    <div class="login-link">
+      Already have an account? <a href="login.html">Login here</a>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+    let selectedRole = '';
+
+    // Load NGOs for volunteer form
+    async function loadNGOs() {
+      const data = await fetch(`${API}/ngos`).then(r => r.json());
+      const select = document.getElementById('v_ngo');
+      data.forEach(n => {
+        select.innerHTML += `<option value="${n.NGO_ID}">${n.NGO_Name}</option>`;
+      });
+    }
+    loadNGOs();
+
+    function selectRole(role, btn) {
+      selectedRole = role;
+      document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+      document.getElementById(`form-${role}`).classList.add('active');
+      document.getElementById('msg').textContent = '';
+    }
+
+    async function register(role) {
+      const msgEl = document.getElementById('msg');
+      let body = {};
+      let endpoint = '';
+
+      if (role === 'Donor') {
+        body = {
+          Donor_ID: document.getElementById('d_id').value,
+          Name: document.getElementById('d_name').value,
+          Phone: document.getElementById('d_phone').value,
+          Email: document.getElementById('d_email').value,
+          Password: document.getElementById('d_password').value,
+          Donor_Type: document.getElementById('d_type').value,
+          Street: document.getElementById('d_street').value,
+          City: document.getElementById('d_city').value,
+          Pincode: document.getElementById('d_pincode').value
+        };
+        endpoint = 'donor';
+      } else if (role === 'Volunteer') {
+        body = {
+          Volunteer_ID: document.getElementById('v_id').value,
+          Name: document.getElementById('v_name').value,
+          Phone: document.getElementById('v_phone').value,
+          Email: document.getElementById('v_email').value,
+          Password: document.getElementById('v_password').value,
+          Area_Assigned: document.getElementById('v_area').value,
+          NGO_ID: document.getElementById('v_ngo').value
+        };
+        endpoint = 'volunteer';
+      } else if (role === 'Recipient') {
+        body = {
+          Recipient_ID: document.getElementById('r_id').value,
+          Name: document.getElementById('r_name').value,
+          Contact: document.getElementById('r_contact').value,
+          Email: document.getElementById('r_email').value,
+          Password: document.getElementById('r_password').value,
+          Location: document.getElementById('r_location').value
+        };
+        endpoint = 'recipient';
+      }
+
+      // Check empty fields
+      const empty = Object.values(body).some(v => !v);
+      if (empty) {
+        msgEl.className = 'msg error';
+        msgEl.textContent = '⚠️ Please fill all fields!';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/register/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          msgEl.className = 'msg error';
+          msgEl.textContent = '❌ ' + data.error;
+        } else {
+          msgEl.className = 'msg success';
+          msgEl.textContent = '✅ ' + data.message + ' Redirecting to login...';
+          setTimeout(() => window.location.href = 'login.html', 2000);
+        }
+      } catch(e) {
+        msgEl.className = 'msg error';
+        msgEl.textContent = '❌ Server not running!';
+      }
+    }
+  </script>
+</body>
+</html>

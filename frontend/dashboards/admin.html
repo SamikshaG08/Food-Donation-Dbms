@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+    header {
+      background: #1b4332;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 20px; }
+    .logout {
+      background: #e63946;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .container { max-width: 1100px; margin: 25px auto; padding: 0 20px; }
+    .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 4px solid #40916c;
+    }
+    .stat-card .num { font-size: 32px; font-weight: bold; color: #1b4332; }
+    .stat-card .label { color: #888; font-size: 13px; margin-top: 5px; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: white;
+      color: #1b4332;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .tab.active { background: #1b4332; color: white; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    .section-box h3 { color: #1b4332; margin-bottom: 15px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1b4332; color: white; padding: 10px; text-align: left; font-size: 13px; }
+    td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+    tr:hover td { background: #f0f4f8; }
+    .pending-card {
+      background: #fff8e1;
+      border: 1px solid #ffd54f;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pending-card .info { font-size: 14px; }
+    .pending-card .info b { color: #1b4332; }
+    select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-right: 8px;
+    }
+    .assign-btn {
+      background: #1b4332;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .assign-btn:hover { background: #40916c; }
+    .stars { color: #ffd700; font-size: 16px; }
+    .rating-badge {
+      background: #1b4332;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .badge.pending { background: #fff3cd; color: #856404; }
+    .badge.collected { background: #d1e7dd; color: #0f5132; }
+    .badge.delivered { background: #cfe2ff; color: #084298; }
+    .badge.available { background: #d1e7dd; color: #0f5132; }
+    .badge.busy { background: #fff3cd; color: #856404; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>👑 Admin Dashboard — Food Donation System</h1>
+  <button class="logout" onclick="logout()">Logout</button>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="totalDonors">0</div>
+      <div class="label">👤 Total Donors</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="totalDonations">0</div>
+      <div class="label">📦 Total Donations</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="pendingDonations">0</div>
+      <div class="label">⏳ Pending Pickups</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="totalVolunteers">0</div>
+      <div class="label">🙋 Volunteers</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab" onclick="showTab('requests', this)">📋 Food Requests</button>
+    <button class="tab active" onclick="showTab('pending', this)">⏳ Pending Donations</button>
+    <button class="tab" onclick="showTab('donors', this)">👤 Donors</button>
+    <button class="tab" onclick="showTab('volunteers', this)">🙋 Volunteers & Ratings</button>
+    <button class="tab" onclick="showTab('recipients', this)">🤝 Recipients</button>
+    <button class="tab" onclick="showTab('deliveries', this)">🚚 All Deliveries</button>
+    <button class="tab" onclick="showTab('ngos', this)">🏢 NGOs</button>
+  </div>
+
+  <!-- Pending Donations -->
+  <div class="section active" id="tab-pending">
+    <div class="section-box">
+      <h3>⏳ Pending Donations — Assign Volunteers</h3>
+      <div id="pendingList">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Donors -->
+  <div class="section" id="tab-donors">
+    <div class="section-box">
+      <h3>👤 All Donors</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Phone</th>
+            <th>Email</th><th>Type</th><th>City</th>
+          </tr>
+        </thead>
+        <tbody id="donorTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Volunteers & Ratings -->
+  <div class="section" id="tab-volunteers">
+    <div class="section-box">
+      <h3>🙋 Volunteers — Rated by Recipients ⭐</h3>
+      <p style="font-size:13px;color:#888;margin-bottom:15px">
+        Sorted by highest rating first
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th><th>ID</th><th>Name</th><th>Area</th>
+            <th>Status</th><th>NGO</th><th>Rating</th><th>Total Deliveries</th>
+          </tr>
+        </thead>
+        <tbody id="volunteerTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recipients -->
+  <div class="section" id="tab-recipients">
+    <div class="section-box">
+      <h3>🤝 All Recipients</h3>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Contact</th><th>Location</th></tr>
+        </thead>
+        <tbody id="recipientTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- All Deliveries -->
+  <div class="section" id="tab-deliveries">
+    <div class="section-box">
+      <h3>🚚 All Deliveries Status</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Food</th><th>Recipient</th><th>Volunteer</th>
+            <th>Date</th><th>Quantity</th><th>Status</th>
+            <th>Recipient Rating</th>
+          </tr>
+        </thead>
+        <tbody id="deliveryTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- NGOs -->
+  <div class="section" id="tab-ngos">
+    <div class="section-box">
+      <h3>🏢 All NGOs</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Contact</th>
+            <th>Address</th><th>Capacity</th>
+          </tr>
+        </thead>
+        <tbody id="ngoTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+ <!-- Food Requests Section -->
+<div class="section" id="tab-requests">
+  <div class="section-box">
+    <h3>📋 Food Requests from Recipients</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Request ID</th><th>Recipient</th><th>Food</th>
+          <th>Quantity</th><th>Date</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="requestTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const role = localStorage.getItem('role');
+  if (!role || role !== 'Admin') window.location.href = '../login.html';
+
+  const API = 'http://localhost:3000/api';
+
+  window.onload = () => {
+    loadStats();
+    loadPending();
+    loadDonors();
+    loadVolunteers();
+    loadRecipients();
+    loadDeliveries();
+    loadNGOs();
+    loadRequests();  // ← add this
+
+  };
+
+  function showTab(tab, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    btn.classList.add('active');
+  }
+  async function loadRequests() {
+  const data = await fetch(`${API}/foodrequests`).then(r => r.json());
+
+  if (data.length === 0) {
+    document.getElementById('requestTable').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:#888">No requests yet!</td></tr>';
+    return;
+  }
+
+  document.getElementById('requestTable').innerHTML = data.map(r => `
+    <tr>
+      <td>${r.Request_ID}</td>
+      <td>${r.Recipient_Name}</td>
+      <td>${r.Food_Name}</td>
+      <td>${r.Quantity_Needed}</td>
+      <td>${new Date(r.Request_Date).toLocaleDateString()}</td>
+      <td><span class="badge ${
+        r.Status === 'Approved' ? 'delivered' :
+        r.Status === 'Rejected' ? 'pending' : 'collected'}">
+        ${r.Status}</span></td>
+      <td>
+        ${r.Status === 'Pending' ? `
+          <button class="assign-btn" style="background:#40916c;margin-right:5px"
+            onclick="updateRequest('${r.Request_ID}','Approved')">
+            ✅ Approve
+          </button>
+          <button class="assign-btn" style="background:#e63946"
+            onclick="updateRequest('${r.Request_ID}','Rejected')">
+            ❌ Reject
+          </button>` :
+          '<span style="color:#888;font-size:12px">Done</span>'}
+      </td>
+    </tr>`).join('');
+}
+
+async function updateRequest(requestId, status) {
+  const res = await fetch(`${API}/foodrequests/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Request_ID: requestId, Status: status })
+  });
+  const data = await res.json();
+  alert(data.message);
+  loadRequests();
+}
+
+  function logout() {
+    localStorage.clear();
+    window.location.href = '../login.html';
+  }
+
+  async function loadStats() {
+    const [donors, donations, volunteers] = await Promise.all([
+      fetch(`${API}/donors`).then(r => r.json()),
+      fetch(`${API}/donations`).then(r => r.json()),
+      fetch(`${API}/volunteers`).then(r => r.json())
+    ]);
+    document.getElementById('totalDonors').textContent = donors.length;
+    document.getElementById('totalDonations').textContent = donations.length;
+    document.getElementById('totalVolunteers').textContent = volunteers.length;
+    const pending = donations.filter(d => d.Status === 'Pending');
+    document.getElementById('pendingDonations').textContent = pending.length;
+  }
+
+  async function loadPending() {
+    const [donations, volunteers] = await Promise.all([
+      fetch(`${API}/donations`).then(r => r.json()),
+      fetch(`${API}/volunteers`).then(r => r.json())
+    ]);
+
+    const pending = donations.filter(d => d.Status === 'Pending');
+    const volOptions = volunteers.map(v =>
+      `<option value="${v.Volunteer_ID}">
+        ${v.Name} (${v.Area_Assigned}) ⭐${parseFloat(v.Rating||0).toFixed(1)}
+       </option>`
+    ).join('');
+
+    if (pending.length === 0) {
+      document.getElementById('pendingList').innerHTML =
+        '<p style="color:green;text-align:center;padding:20px">✅ No pending donations!</p>';
+      return;
+    }
+
+    document.getElementById('pendingList').innerHTML = pending.map(d => `
+      <div class="pending-card">
+        <div class="info">
+          <b>Donation ${d.Donation_ID}</b> — Donor: ${d.Donor_ID}<br>
+          📅 ${new Date(d.Donation_Date).toLocaleDateString()}
+          🕐 ${d.Pickup_Time}
+          <span class="badge pending">Pending</span>
+        </div>
+        <div>
+          <select id="vol_${d.Donation_ID}">${volOptions}</select>
+          <button class="assign-btn"
+            onclick="assignVolunteer('${d.Donation_ID}')">
+            Assign Volunteer
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function assignVolunteer(donationId) {
+    const volId = document.getElementById(`vol_${donationId}`).value;
+    const res = await fetch(`${API}/donations/assign`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Donation_ID: donationId, Volunteer_ID: volId })
+    });
+    const data = await res.json();
+    alert(data.message || data.error);
+    loadPending();
+    loadStats();
+  }
+
+  async function loadDonors() {
+    const data = await fetch(`${API}/donors`).then(r => r.json());
+    document.getElementById('donorTable').innerHTML = data.map(d => `
+      <tr>
+        <td>${d.Donor_ID}</td><td>${d.Name}</td><td>${d.Phone}</td>
+        <td>${d.Email}</td><td>${d.Donor_Type}</td><td>${d.City}</td>
+      </tr>`).join('');
+  }
+
+  async function loadVolunteers() {
+    const data = await fetch(`${API}/volunteers`).then(r => r.json());
+    // Sort by rating highest first
+    data.sort((a, b) => (b.Rating || 0) - (a.Rating || 0));
+    document.getElementById('volunteerTable').innerHTML = data.map((v, index) => {
+      const rating = parseFloat(v.Rating) || 0;
+      const stars = rating > 0 ? '⭐'.repeat(Math.round(rating)) : '—';
+      const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index+1}`;
+      return `<tr>
+        <td style="font-size:18px">${medal}</td>
+        <td>${v.Volunteer_ID}</td>
+        <td><b>${v.Name}</b></td>
+        <td>${v.Area_Assigned}</td>
+        <td><span class="badge ${v.Availability_Status === 'Available' 
+            ? 'available' : 'busy'}">
+          ${v.Availability_Status}</span></td>
+        <td>${v.NGO_ID}</td>
+        <td>
+          <span class="stars">${stars}</span>
+          <span class="rating-badge">${rating.toFixed(1)}</span>
+        </td>
+        <td>${v.Total_Deliveries || 0}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function loadRecipients() {
+    const data = await fetch(`${API}/recipients`).then(r => r.json());
+    document.getElementById('recipientTable').innerHTML = data.map(r => `
+      <tr>
+        <td>${r.Recipient_ID}</td><td>${r.Name}</td>
+        <td>${r.Contact}</td><td>${r.Location}</td>
+      </tr>`).join('');
+  }
+
+  async function loadDeliveries() {
+    const [data, volunteers] = await Promise.all([
+      fetch(`${API}/distributions`).then(r => r.json()),
+      fetch(`${API}/volunteers`).then(r => r.json())
+    ]);
+
+    document.getElementById('deliveryTable').innerHTML = data.map(d => {
+      const vol = volunteers.find(v => v.Volunteer_ID === d.Volunteer_ID);
+      const rating = parseFloat(vol?.Rating) || 0;
+      const stars = rating > 0 ? '⭐'.repeat(Math.round(rating)) : '—';
+
+      return `<tr>
+        <td>${d.Food_ID}</td>
+        <td>${d.Recipient_ID}</td>
+        <td>${d.Volunteer_ID}</td>
+        <td>${new Date(d.Distribution_Date).toLocaleDateString()}</td>
+        <td>${d.Quantity_Distribution}</td>
+        <td><span class="badge ${
+            d.Delivery_Status === 'Delivered' ? 'delivered' :
+            d.Delivery_Status === 'InTransit' ? 'collected' : 'pending'}">
+          ${d.Delivery_Status || 'Pending'}</span></td>
+        <td>
+          ${d.Delivery_Status === 'Delivered' ? `
+            <div style="font-size:16px">${stars}</div>
+            <div style="font-size:12px;color:#888">
+              ${rating.toFixed(1)}/5 (by Recipient)
+            </div>` :
+            '<span style="color:#aaa;font-size:12px">⏳ Not delivered yet</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function loadNGOs() {
+    const data = await fetch(`${API}/ngos`).then(r => r.json());
+    document.getElementById('ngoTable').innerHTML = data.map(n => `
+      <tr>
+        <td>${n.NGO_ID}</td><td>${n.NGO_Name}</td>
+        <td>${n.ContactNo}</td><td>${n.Address}</td><td>${n.Capacity}</td>
+      </tr>`).join('');
+  }
+</script>
+</body>
+</html>
