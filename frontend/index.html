@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Food Donation Management System</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -10,6 +11,19 @@
              text-align: center; }
     header h1 { font-size: 28px; }
     header p { font-size: 14px; margin-top: 5px; opacity: 0.8; }
+    .intro { max-width: 980px; margin: 32px auto 0; padding: 0 20px; }
+    .intro-card {
+      background: white;
+      border-radius: 14px;
+      border: 2px solid #b7e4c7;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      padding: 24px;
+      color: #1f2937;
+      line-height: 1.7;
+    }
+    .intro-card h2 { font-size: 22px; color: #2d6a4f; margin-bottom: 14px; }
+    .intro-card p { font-size: 14px; margin-bottom: 14px; }
+    .intro-card p:last-child { margin-bottom: 0; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr);
             gap: 20px; max-width: 800px; margin: 40px auto; padding: 0 20px; }
     .card { background: white; border-radius: 12px; padding: 25px;
@@ -21,6 +35,14 @@
     .card h3 { font-size: 16px; }
     footer { text-align: center; padding: 20px;
              color: #888; font-size: 13px; margin-top: 20px; }
+    @media (max-width: 700px) {
+      header { padding: 18px 16px; }
+      header h1 { font-size: 22px; }
+      .intro { margin: 20px auto 0; padding: 0 16px; }
+      .intro-card { padding: 18px; }
+      .grid { grid-template-columns: 1fr; gap: 16px; margin: 24px auto; padding: 0 16px; }
+      .card { padding: 20px; }
+    }
   </style>
 </head>
 <body>
@@ -28,6 +50,15 @@
     <h1>🍱 Food Donation Management System</h1>
     <p>Batch B1 | Group 05 | 23PCIT401L</p>
   </header>
+
+  <section class="intro">
+    <div class="intro-card">
+      <h2>Project Overview</h2>
+      <p>This food donation system is designed to efficiently connect donors, one NGO, volunteers, and recipients through a centralized and automated platform. Donors can add details of leftover food such as quantity, type, and location, which becomes instantly visible in the system. Based on location, nearby volunteers are automatically notified, reducing delays and ensuring quick response.</p>
+      <p>Recipients can view available food and place requests in real time. The system then assigns the most suitable nearby volunteer, who collects the food from the donor and updates the status to "picked up," followed by delivery to the recipient. After successful delivery, the recipient confirms the receipt and provides a rating for the volunteer, ensuring transparency and accountability.</p>
+      <p>The admin, associated with a specific NGO, primarily monitors activities through a dashboard instead of manually controlling every step. This workflow ensures a fast, reliable, and scalable solution that minimizes food wastage while effectively delivering surplus food to those in need.</p>
+    </div>
+  </section>
 
   <div class="grid">
     <a class="card" href="pages/donor.html">
@@ -40,7 +71,7 @@
       <div class="icon">🥗</div><h3>Food Items</h3>
     </a>
     <a class="card" href="pages/ngo.html">
-      <div class="icon">🏢</div><h3>NGOs</h3>
+      <div class="icon">🏢</div><h3>Our NGO</h3>
     </a>
     <a class="card" href="pages/volunteer.html">
       <div class="icon">🙋</div><h3>Volunteers</h3>

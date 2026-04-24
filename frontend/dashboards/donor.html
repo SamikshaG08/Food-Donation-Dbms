@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Donor Dashboard</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -63,6 +64,24 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
     }
+    .food-items-box {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid #d8f3dc;
+      border-radius: 10px;
+      background: #f8fff9;
+    }
+    .food-items-box h4 {
+      color: #1b4332;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+    .food-item-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
     input, select {
       width: 100%;
       padding: 9px;
@@ -81,8 +100,25 @@
       font-size: 15px;
     }
     button:hover { background: #40916c; }
+    .mini-btn {
+      margin-top: 0;
+      padding: 9px 14px;
+      font-size: 13px;
+    }
+    .secondary-btn {
+      background: white;
+      color: #1b4332;
+      border: 1px solid #1b4332;
+    }
     .msg { margin-top: 10px; font-weight: bold; color: green; }
-    table { width: 100%; border-collapse: collapse; }
+    table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
     th {
       background: #1b4332;
       color: white;
@@ -100,42 +136,49 @@
     }
     .badge.pending { background: #fff3cd; color: #856404; }
     .badge.collected { background: #d1e7dd; color: #0f5132; }
+    @media (max-width: 700px) {
+      header {
+        padding: 14px 16px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      .container { padding: 0 14px; }
+      .stats, .form-grid, .food-item-row { grid-template-columns: 1fr; }
+      .section-box { padding: 16px; }
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>👤 Donor Dashboard</h1>
+  <h1>Donor Dashboard</h1>
   <button class="logout" onclick="logout()">Logout</button>
 </header>
 
 <div class="container">
-
-  <!-- Welcome -->
   <div class="welcome">
-    <h2>Welcome, <span id="donorName">Donor</span>! 👋</h2>
+    <h2>Welcome, <span id="donorName">Donor</span>!</h2>
     <p>Manage your food donations and track their status here.</p>
   </div>
 
-  <!-- Stats -->
   <div class="stats">
     <div class="stat-card">
       <div class="num" id="totalDonations">0</div>
-      <div class="label">📦 Total Donations</div>
+      <div class="label">Total Donations</div>
     </div>
     <div class="stat-card">
       <div class="num" id="pendingCount">0</div>
-      <div class="label">⏳ Pending</div>
+      <div class="label">Pending</div>
     </div>
     <div class="stat-card">
       <div class="num" id="collectedCount">0</div>
-      <div class="label">✅ Collected</div>
+      <div class="label">Collected</div>
     </div>
   </div>
 
-  <!-- Add Donation -->
   <div class="section-box">
-    <h3>➕ Add New Donation</h3>
+    <h3>Add New Donation</h3>
     <div class="form-grid">
       <input id="dnid" placeholder="Donation ID (e.g. DN4)">
       <input id="dndate" type="date">
@@ -145,28 +188,34 @@
         <option value="Collected">Collected</option>
       </select>
     </div>
-    <button onclick="addDonation()">➕ Add Donation</button>
+    <div class="food-items-box">
+      <h4>Food Items In This Donation</h4>
+      <div id="foodItemsList"></div>
+      <button class="mini-btn secondary-btn" type="button" onclick="addFoodItemRow()">+ Add Another Food Item</button>
+    </div>
+    <button onclick="addDonation()">Add Donation</button>
     <p class="msg" id="msg"></p>
   </div>
 
-  <!-- My Donations -->
   <div class="section-box">
-    <h3>📦 My Donations</h3>
+    <h3>My Donations</h3>
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>Date</th><th>Pickup Time</th>
-          <th>Status</th><th>Assigned Volunteer</th>
+          <th>ID</th>
+          <th>Date</th>
+          <th>Pickup Time</th>
+          <th>Food Items</th>
+          <th>Status</th>
+          <th>Assigned Volunteer</th>
         </tr>
       </thead>
       <tbody id="donationTable"></tbody>
     </table>
   </div>
-
 </div>
 
 <script>
-  // Check role
   const role = localStorage.getItem('role');
   if (!role || role !== 'Donor') window.location.href = '../login.html';
 
@@ -176,6 +225,7 @@
 
   window.onload = () => {
     document.getElementById('donorName').textContent = username;
+    addFoodItemRow();
     loadMyDonations();
   };
 
@@ -184,43 +234,98 @@
     window.location.href = '../login.html';
   }
 
+  function createFoodItemRow(index) {
+    return `
+      <div class="food-item-row">
+        <input class="foodid" placeholder="Food ID (e.g. F${index + 1})">
+        <input class="foodname" placeholder="Food name">
+        <input class="foodtype" placeholder="Food type">
+        <input class="shelflife" placeholder="Shelf life">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;">
+          <input class="quantity" placeholder="Quantity available">
+          <button class="mini-btn" type="button" onclick="removeFoodItemRow(this)">Remove</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function addFoodItemRow() {
+    const list = document.getElementById('foodItemsList');
+    list.insertAdjacentHTML('beforeend', createFoodItemRow(list.children.length));
+  }
+
+  function removeFoodItemRow(button) {
+    const list = document.getElementById('foodItemsList');
+    if (list.children.length === 1) return;
+    button.closest('.food-item-row').remove();
+  }
+
   async function loadMyDonations() {
     const data = await fetch(`${API}/donations`).then(r => r.json());
-    // Filter only THIS donor's donations
-    const myDonations = data.filter(d => d.Donor_ID === donorId);
+    const grouped = new Map();
 
-    // Update stats
+    data
+      .filter(d => d.Donor_ID === donorId)
+      .forEach(d => {
+        if (!grouped.has(d.Donation_ID)) {
+          grouped.set(d.Donation_ID, {
+            Donation_ID: d.Donation_ID,
+            Donation_Date: d.Donation_Date,
+            Pickup_Time: d.Pickup_Time,
+            Status: d.Status,
+            Volunteer_ID: d.Volunteer_ID,
+            items: []
+          });
+        }
+
+        if (d.Food_Name || d.Quantity) {
+          grouped.get(d.Donation_ID).items.push(`${d.Food_Name || '-'} (${d.Quantity || '-'})`);
+        }
+      });
+
+    const myDonations = Array.from(grouped.values());
+
     document.getElementById('totalDonations').textContent = myDonations.length;
     document.getElementById('pendingCount').textContent =
       myDonations.filter(d => d.Status === 'Pending').length;
     document.getElementById('collectedCount').textContent =
       myDonations.filter(d => d.Status === 'Collected').length;
 
-    // Show table
     document.getElementById('donationTable').innerHTML = myDonations.length === 0
-      ? '<tr><td colspan="5" style="text-align:center;color:#888">No donations yet!</td></tr>'
+      ? '<tr><td colspan="6" style="text-align:center;color:#888">No donations yet!</td></tr>'
       : myDonations.map(d => `
           <tr>
             <td>${d.Donation_ID}</td>
             <td>${new Date(d.Donation_Date).toLocaleDateString()}</td>
             <td>${d.Pickup_Time}</td>
-            <td><span class="badge ${d.Status === 'Pending' ? 'pending' : 'collected'}">
-              ${d.Status}</span></td>
-            <td>${d.Volunteer_ID || '⏳ Not assigned yet'}</td>
+            <td>${d.items.length ? d.items.join(', ') : '-'}</td>
+            <td><span class="badge ${d.Status === 'Pending' ? 'pending' : 'collected'}">${d.Status}</span></td>
+            <td>${d.Volunteer_ID || 'Not assigned yet'}</td>
           </tr>`).join('');
   }
 
   async function addDonation() {
+    const foodItems = Array.from(document.querySelectorAll('.food-item-row')).map(row => ({
+      Food_ID: row.querySelector('.foodid').value.trim(),
+      Food_Name: row.querySelector('.foodname').value.trim(),
+      Food_Type: row.querySelector('.foodtype').value.trim(),
+      Shelf_Life: row.querySelector('.shelflife').value.trim(),
+      Quantity: row.querySelector('.quantity').value.trim()
+    }));
+
     const body = {
-      Donation_ID: document.getElementById('dnid').value,
+      Donation_ID: document.getElementById('dnid').value.trim(),
       Donation_Date: document.getElementById('dndate').value,
       Pickup_Time: document.getElementById('dntime').value,
       Status: document.getElementById('dnstatus').value,
-      Donor_ID: donorId
+      Donor_ID: donorId,
+      Food_Items: foodItems
     };
 
-    if (!body.Donation_ID || !body.Donation_Date || !body.Pickup_Time) {
-      document.getElementById('msg').textContent = 'Please fill all fields!';
+    if (!body.Donation_ID || !body.Donation_Date || !body.Pickup_Time ||
+        foodItems.length === 0 ||
+        foodItems.some(item => !item.Food_ID || !item.Food_Name || !item.Food_Type || !item.Shelf_Life || !item.Quantity)) {
+      document.getElementById('msg').textContent = 'Please fill all donation and food fields!';
       document.getElementById('msg').style.color = 'red';
       return;
     }
@@ -230,10 +335,20 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
+
     const data = await res.json();
-    document.getElementById('msg').textContent = data.message || data.error.sqlMessage;
+    document.getElementById('msg').textContent = data.message || data.error || 'Unable to add donation';
     document.getElementById('msg').style.color = data.message ? 'green' : 'red';
-    loadMyDonations();
+
+    if (data.message) {
+      ['dnid', 'dndate', 'dntime'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('dnstatus').value = 'Pending';
+      document.getElementById('foodItemsList').innerHTML = '';
+      addFoodItemRow();
+      loadMyDonations();
+    }
   }
 </script>
 </body>

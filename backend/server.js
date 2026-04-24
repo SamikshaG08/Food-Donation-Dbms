@@ -7,7 +7,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use('/api/register', require('./routes/register'));
 app.use('/api/foodrequests', require('./routes/foodrequest'));
-
+app.use('/api/adminnotifications', require('./routes/adminnotification'));
 app.use('/api/donors',        require('./routes/donor'));
 app.use('/api/donations',     require('./routes/donation'));
 app.use('/api/foods',         require('./routes/food'));

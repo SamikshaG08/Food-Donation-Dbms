@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Food Donation System</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       background: linear-gradient(135deg, #1b4332, #40916c);
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 24px;
     }
     .login-box {
       background: white;
@@ -90,11 +92,31 @@
       margin-top: 5px;
     }
     button.login-btn:hover { background: #40916c; }
+    .secondary-btn {
+      width: 100%;
+      padding: 11px;
+      background: white;
+      color: #1b4332;
+      border: 1px solid #1b4332;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    .secondary-btn:hover { background: #ecfdf3; }
     .error {
       color: red;
       font-size: 13px;
       margin-top: 10px;
       min-height: 20px;
+      margin-bottom: 0;
+    }
+    .success {
+      color: green;
+      font-size: 13px;
+      margin-top: 8px;
+      min-height: 20px;
+      margin-bottom: 0;
     }
     .divider {
       border: none;
@@ -106,9 +128,50 @@
       color: #40916c;
       cursor: pointer;
       text-decoration: underline;
-      float: right;
-      margin-top: -10px;
+      text-align: right;
+      margin-top: -6px;
       margin-bottom: 15px;
+    }
+    .reset-box {
+      display: none;
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid #d8f3dc;
+      border-radius: 10px;
+      background: #f8fff9;
+      text-align: left;
+    }
+    .reset-box.active { display: block; }
+    .reset-title {
+      color: #1b4332;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    .reset-hint {
+      color: #666;
+      font-size: 12px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .register-link {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 13px;
+      color: #888;
+    }
+    .register-link a {
+      color: #1b4332;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    @media (max-width: 900px) {
+      .login-box { width: 100%; max-width: 430px; }
+    }
+    @media (max-width: 520px) {
+      body { padding: 14px; }
+      .login-box { padding: 24px 18px; }
+      .role-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -118,10 +181,9 @@
     <h2>Food Donation System</h2>
     <p>Select your role and login</p>
 
-    <!-- Role Selection -->
     <div class="role-grid">
       <button class="role-btn" onclick="selectRole('Admin', this)">
-        <span class="icon">👑</span>Admin
+        <span class="icon">🧑</span>Admin
       </button>
       <button class="role-btn" onclick="selectRole('Donor', this)">
         <span class="icon">👤</span>Donor
@@ -132,35 +194,54 @@
       <button class="role-btn" onclick="selectRole('Recipient', this)">
         <span class="icon">🤝</span>Recipient
       </button>
+    </div>
 
-      <div style="text-align:center;margin-top:15px;font-size:13px;color:#888">
-  New user? 
-  <a href="register.html" 
-     style="color:#1b4332;font-weight:bold;text-decoration:none">
-    Register here
-  </a>
-</div>
+    <div class="register-link">
+      New user?
+      <a href="register.html">Register here</a>
     </div>
 
     <hr class="divider">
 
-    <!-- Email Input -->
     <div class="input-group">
       <span class="icon">📧</span>
       <input type="email" id="email" placeholder="Enter your email">
     </div>
 
-    <!-- Password Input -->
     <div class="input-group">
       <span class="icon">🔒</span>
       <input type="password" id="password" placeholder="Enter your password">
       <span class="show-pass" onclick="togglePassword()">👁️</span>
     </div>
 
+    <div class="forgot" onclick="toggleResetBox()">Forgot Password?</div>
+
     <button class="login-btn" onclick="login()">Login →</button>
     <p class="error" id="error"></p>
+    <p class="success" id="success"></p>
+
+    <div class="reset-box" id="resetBox">
+      <div class="reset-title">Reset Password</div>
+      <div class="reset-hint">Select your role, enter your registered email, and choose a new password.</div>
+
+      <div class="input-group">
+        <span class="icon">📧</span>
+        <input type="email" id="reset_email" placeholder="Enter your registered email">
+      </div>
+
+      <div class="input-group">
+        <span class="icon">🔒</span>
+        <input type="password" id="reset_password" placeholder="Enter new password">
+      </div>
+
+      <div class="input-group">
+        <span class="icon">🔒</span>
+        <input type="password" id="reset_confirm_password" placeholder="Confirm new password">
+      </div>
+
+      <button class="secondary-btn" onclick="resetPassword()">Reset Password</button>
+    </div>
   </div>
-  
 
   <script>
     let selectedRole = '';
@@ -170,6 +251,7 @@
       document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('error').textContent = '';
+      document.getElementById('success').textContent = '';
     }
 
     function togglePassword() {
@@ -177,26 +259,36 @@
       input.type = input.type === 'password' ? 'text' : 'password';
     }
 
+    function toggleResetBox() {
+      const box = document.getElementById('resetBox');
+      box.classList.toggle('active');
+      document.getElementById('error').textContent = '';
+      document.getElementById('success').textContent = '';
+      document.getElementById('reset_email').value = document.getElementById('email').value.trim();
+    }
+
     async function login() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const errorEl = document.getElementById('error');
+      const successEl = document.getElementById('success');
 
-      // Validations
+      successEl.textContent = '';
+
       if (!selectedRole) {
-        errorEl.textContent = '⚠️ Please select a role first!';
+        errorEl.textContent = 'Please select a role first!';
         return;
       }
       if (!email) {
-        errorEl.textContent = '⚠️ Please enter your email!';
+        errorEl.textContent = 'Please enter your email!';
         return;
       }
       if (!email.includes('@')) {
-        errorEl.textContent = '⚠️ Please enter a valid email!';
+        errorEl.textContent = 'Please enter a valid email!';
         return;
       }
       if (!password) {
-        errorEl.textContent = '⚠️ Please enter your password!';
+        errorEl.textContent = 'Please enter your password!';
         return;
       }
 
@@ -209,37 +301,92 @@
         const data = await res.json();
 
         if (data.error) {
-          errorEl.textContent = '❌ ' + data.error;
+          errorEl.textContent = data.error;
           return;
         }
 
-        // Verify role matches
         if (data.role !== selectedRole) {
-          errorEl.textContent = `❌ This email is not registered as ${selectedRole}!`;
+          errorEl.textContent = `This email is not registered as ${selectedRole}!`;
           return;
         }
 
-        // Save to localStorage
         localStorage.setItem('token', data.token);
         localStorage.setItem('role', data.role);
         localStorage.setItem('ref_id', data.ref_id);
         localStorage.setItem('username', data.username);
 
-        // Redirect based on role
-        if (data.role === 'Admin')     window.location.href = 'dashboards/admin.html';
-        if (data.role === 'Donor')     window.location.href = 'dashboards/donor.html';
+        if (data.role === 'Admin') window.location.href = 'dashboards/admin.html';
+        if (data.role === 'Donor') window.location.href = 'dashboards/donor.html';
         if (data.role === 'Volunteer') window.location.href = 'dashboards/volunteer.html';
         if (data.role === 'Recipient') window.location.href = 'dashboards/recipient.html';
-
-      } catch(err) {
-        errorEl.textContent = '❌ Server not running! Start node server.js';
+      } catch (err) {
+        errorEl.textContent = 'Server not running! Start node server.js';
       }
     }
 
-    // Allow Enter key to login
+    async function resetPassword() {
+      const errorEl = document.getElementById('error');
+      const successEl = document.getElementById('success');
+      const email = document.getElementById('reset_email').value.trim();
+      const newPassword = document.getElementById('reset_password').value;
+      const confirmPassword = document.getElementById('reset_confirm_password').value;
+
+      errorEl.textContent = '';
+      successEl.textContent = '';
+
+      if (!selectedRole) {
+        errorEl.textContent = 'Please select a role first!';
+        return;
+      }
+      if (!email) {
+        errorEl.textContent = 'Please enter your email!';
+        return;
+      }
+      if (!newPassword) {
+        errorEl.textContent = 'Please enter a new password!';
+        return;
+      }
+      if (newPassword.length < 4) {
+        errorEl.textContent = 'Password must be at least 4 characters!';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        errorEl.textContent = 'Passwords do not match!';
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:3000/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, role: selectedRole, newPassword })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          errorEl.textContent = data.error;
+          return;
+        }
+
+        document.getElementById('email').value = email;
+        document.getElementById('password').value = newPassword;
+        document.getElementById('reset_password').value = '';
+        document.getElementById('reset_confirm_password').value = '';
+        document.getElementById('resetBox').classList.remove('active');
+        successEl.textContent = data.message;
+      } catch (err) {
+        errorEl.textContent = 'Server not running! Start node server.js';
+      }
+    }
+
     document.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
+      if (e.key === 'Enter') {
+        const resetOpen = document.getElementById('resetBox').classList.contains('active');
+        if (resetOpen) resetPassword();
+        else login();
+      }
     });
+
   </script>
 </body>
 </html>

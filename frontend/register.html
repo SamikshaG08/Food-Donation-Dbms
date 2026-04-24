@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register - Food Donation System</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -110,6 +111,11 @@
       border-top: 1px solid #eee;
       margin: 15px 0;
     }
+    @media (max-width: 700px) {
+      .box { width: 100%; padding: 24px 18px; }
+      .role-grid, .form-grid { grid-template-columns: 1fr; }
+      .full-width { grid-column: auto; }
+    }
   </style>
 </head>
 <body>
@@ -202,9 +208,7 @@
         </div>
         <div class="input-group full-width">
           <span class="icon">🏢</span>
-          <select id="v_ngo">
-            <option value="">Select NGO</option>
-          </select>
+          <input id="v_ngo_name" value="Helping Hands NGO" readonly>
         </div>
         <div class="input-group full-width">
           <span class="icon">📧</span>
@@ -261,17 +265,8 @@
 
   <script>
     const API = 'http://localhost:3000/api';
+    const DEFAULT_NGO_ID = 'N1';
     let selectedRole = '';
-
-    // Load NGOs for volunteer form
-    async function loadNGOs() {
-      const data = await fetch(`${API}/ngos`).then(r => r.json());
-      const select = document.getElementById('v_ngo');
-      data.forEach(n => {
-        select.innerHTML += `<option value="${n.NGO_ID}">${n.NGO_Name}</option>`;
-      });
-    }
-    loadNGOs();
 
     function selectRole(role, btn) {
       selectedRole = role;
@@ -308,7 +303,7 @@
           Email: document.getElementById('v_email').value,
           Password: document.getElementById('v_password').value,
           Area_Assigned: document.getElementById('v_area').value,
-          NGO_ID: document.getElementById('v_ngo').value
+          NGO_ID: DEFAULT_NGO_ID
         };
         endpoint = 'volunteer';
       } else if (role === 'Recipient') {

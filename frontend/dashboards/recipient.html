@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recipient Dashboard</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -179,6 +180,23 @@
       font-weight: bold;
     }
     .submit-btn:hover { background: #40916c; }
+    @media (max-width: 760px) {
+      header {
+        padding: 14px 16px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      .container { padding: 0 14px; }
+      .stats, .request-form { grid-template-columns: 1fr; }
+      .food-card, .request-card, .notif-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .section-box { padding: 16px; }
+      .confirm-btn, .mark-btn { width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -224,7 +242,7 @@
   <div class="section-box">
     <h3>🍱 Request Food</h3>
     <p style="font-size:13px;color:#888;margin-bottom:15px">
-      Select food item and quantity you need
+      Select from food currently available in donor donations
     </p>
     <div class="request-form">
       <select id="req_food">
@@ -283,6 +301,7 @@
     loadFoodDeliveries();
     setInterval(() => {
       loadNotifications();
+      loadFoodItems();
       loadMyRequests();
       loadFoodDeliveries();
     }, 30000);
@@ -338,9 +357,21 @@
   // ─── FOOD ITEMS DROPDOWN ─────────────────────────
   async function loadFoodItems() {
     try {
-      const data = await fetch(`${API}/foods`).then(r => r.json());
+      const data = await fetch(`${API}/foods/available`).then(r => r.json());
       const select = document.getElementById('req_food');
+      select.innerHTML = '<option value="">Select Available Food Item</option>';
+      if (data.length === 0) {
+        select.innerHTML = '<option value="">No food available right now</option>';
+        return;
+      }
       data.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f.Food_ID;
+        option.dataset.donationId = f.Donation_ID;
+        option.textContent =
+          `${f.Food_Name} (${f.Food_Type}) - ${f.Quantity} from ${f.Donor_Name || 'Donor'}${f.Donor_City ? ` in ${f.Donor_City}` : ''} [${f.Donation_ID}]`;
+        select.appendChild(option);
+        return;
         select.innerHTML += `
           <option value="${f.Food_ID}">
             ${f.Food_Name} (${f.Food_Type}) — ${f.Shelf_Life}
@@ -354,6 +385,8 @@
   // ─── REQUEST FOOD ─────────────────────────────────
   async function requestFood() {
     const foodId = document.getElementById('req_food').value;
+    const selectedFood = document.getElementById('req_food').selectedOptions[0];
+    const donationId = selectedFood ? selectedFood.dataset.donationId : '';
     const qty = document.getElementById('req_qty').value.trim();
     const msgEl = document.getElementById('reqMsg');
 
@@ -378,6 +411,7 @@
           Request_ID,
           Recipient_ID: recipientId,
           Food_ID: foodId,
+          Donation_ID: donationId,
           Quantity_Needed: qty
         })
       });
@@ -388,6 +422,7 @@
         msgEl.textContent = '✅ ' + data.message;
         document.getElementById('req_food').value = '';
         document.getElementById('req_qty').value = '';
+        loadFoodItems();
         loadMyRequests();
         // Update stats
         const total = document.getElementById('totalRequests');
@@ -422,6 +457,7 @@
           <div style="font-size:14px;line-height:1.8">
             <b style="color:#1b4332">${r.Food_Name}</b>
             (${r.Food_Type})<br>
+            Donation: ${r.Donation_ID || '-'} (${r.Available_Quantity || '-'})<br>
             📦 Quantity Needed: ${r.Quantity_Needed}<br>
             📅 Requested: ${new Date(r.Request_Date).toLocaleDateString()}<br>
             ⏳ Shelf Life: ${r.Shelf_Life}
@@ -466,8 +502,17 @@
             <span class="badge ${(d.Delivery_Status||'pending').toLowerCase()}">
               ${d.Delivery_Status || 'Pending'}
             </span><br><br>
-            ${d.Delivery_Status === 'Delivered' ? `
+            ${d.Delivery_Status === 'Delivered' && !d.Recipient_Accepted ? `
+              <button class="confirm-btn"
+                onclick="acceptDelivery('${d.Food_ID}',
+                  '${d.Volunteer_ID}')">
+                Accept Delivery
+              </button>` : d.Delivery_Status === 'Delivered' ? `
               <span class="confirmed">✅ Food Received!</span><br><br>
+              ${d.Recipient_Rating ? `
+                <div style="font-size:13px;color:#0f5132;font-weight:bold">
+                  You rated this volunteer ${d.Recipient_Rating}/5
+                </div>` : `
               <div style="margin-top:8px">
                 <div style="font-size:13px;color:#555;margin-bottom:5px">
                   Rate Volunteer:
@@ -475,20 +520,20 @@
                 <div style="display:flex;gap:5px;justify-content:center">
                   ${[1,2,3,4,5].map(star => `
                     <span
-                      id="star_${d.Food_ID}_${star}"
+                      id="star_${d.Food_ID}_${d.Volunteer_ID}_${star}"
                       onclick="setRating('${d.Food_ID}',
                         '${d.Volunteer_ID}',${star})"
                       style="font-size:24px;cursor:pointer;opacity:0.4"
-                      onmouseover="hoverStars('${d.Food_ID}',${star})"
-                      onmouseout="resetStars('${d.Food_ID}')">
+                      onmouseover="hoverStars('${d.Food_ID}','${d.Volunteer_ID}',${star})"
+                      onmouseout="resetStars('${d.Food_ID}','${d.Volunteer_ID}')">
                       ⭐
                     </span>`).join('')}
                 </div>
                 <div style="font-size:12px;color:#aaa;margin-top:5px"
-                  id="ratingMsg_${d.Food_ID}">
+                  id="ratingMsg_${d.Food_ID}_${d.Volunteer_ID}">
                   Click a star to rate
                 </div>
-              </div>` : `
+              </div>`}` : `
               <button class="confirm-btn"
                 onclick="confirmReceived('${d.Food_ID}',
                   '${d.Volunteer_ID}')">
@@ -530,44 +575,62 @@
   }
 
   // ─── STAR RATING ──────────────────────────────────
-  function hoverStars(foodId, star) {
+  async function acceptDelivery(foodId, volunteerId) {
+    const res = await fetch(`${API}/distributions/accept`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Food_ID: foodId,
+        Recipient_ID: recipientId,
+        Volunteer_ID: volunteerId
+      })
+    });
+    const data = await res.json();
+    alert(data.message || data.error);
+    loadFoodDeliveries();
+  }
+
+  function hoverStars(foodId, volunteerId, star) {
     for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById(`star_${foodId}_${i}`);
+      const el = document.getElementById(`star_${foodId}_${volunteerId}_${i}`);
       if (el) el.style.opacity = i <= star ? '1' : '0.4';
     }
   }
 
-  function resetStars(foodId) {
+  function resetStars(foodId, volunteerId) {
     for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById(`star_${foodId}_${i}`);
+      const el = document.getElementById(`star_${foodId}_${volunteerId}_${i}`);
       if (el) el.style.opacity = '0.4';
     }
   }
 
   async function setRating(foodId, volunteerId, rating) {
     for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById(`star_${foodId}_${i}`);
+      const el = document.getElementById(`star_${foodId}_${volunteerId}_${i}`);
       if (el) {
         el.style.opacity = i <= rating ? '1' : '0.4';
         el.style.pointerEvents = 'none';
       }
     }
 
-    const res = await fetch(`${API}/volunteers/rate`, {
+    const res = await fetch(`${API}/distributions/rate`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        Food_ID: foodId,
+        Recipient_ID: recipientId,
         Volunteer_ID: volunteerId,
         Rating: rating
       })
     });
     const data = await res.json();
 
-    const msgEl = document.getElementById(`ratingMsg_${foodId}`);
+    const msgEl = document.getElementById(`ratingMsg_${foodId}_${volunteerId}`);
     if (msgEl) {
       msgEl.textContent = `✅ You rated ${rating}/5 — Thank you!`;
-      msgEl.style.color = 'green';
+      msgEl.style.color = data.message ? 'green' : 'red';
     }
+    if (data.message) loadFoodDeliveries();
   }
 </script>
 </body>

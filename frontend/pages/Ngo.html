@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>NGOs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Our NGO</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; background: #f0f4f8; }
@@ -10,95 +11,75 @@
              display: flex; align-items: center; gap: 15px; }
     header a { color: white; text-decoration: none; font-size: 20px; }
     header h2 { font-size: 20px; }
-    .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
-    .form-box { background: white; padding: 20px; border-radius: 12px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
-    .form-box h3 { color: #2d6a4f; margin-bottom: 15px; }
-    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    input { width: 100%; padding: 9px; border: 1px solid #ccc;
-            border-radius: 6px; font-size: 14px; }
-    button { margin-top: 15px; padding: 10px 25px; background: #2d6a4f;
-             color: white; border: none; border-radius: 6px;
-             cursor: pointer; font-size: 15px; }
-    button:hover { background: #40916c; }
-    .msg { margin-top: 10px; font-weight: bold; color: green; }
-    table { width: 100%; border-collapse: collapse; background: white;
-            border-radius: 12px; overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    th { background: #2d6a4f; color: white; padding: 12px; text-align: left; }
-    td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-    tr:hover td { background: #f0f4f8; }
-    .del-btn { background: #e63946; color: white; border: none;
-               padding: 5px 12px; border-radius: 5px; cursor: pointer; }
+    .container { max-width: 760px; margin: 30px auto; padding: 0 20px; }
+    .ngo-card { background: white; padding: 24px; border-radius: 14px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .ngo-card h3 { color: #2d6a4f; margin-bottom: 10px; font-size: 24px; }
+    .ngo-card p { color: #4b5563; margin-bottom: 18px; line-height: 1.6; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .info-box { background: #f7fbf8; border: 1px solid #d8f3dc; border-radius: 10px; padding: 14px; }
+    .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; margin-bottom: 6px; }
+    .value { font-size: 16px; color: #111827; font-weight: bold; }
+    .helper { margin-top: 18px; color: #2d6a4f; font-size: 14px; }
+    @media (max-width: 700px) {
+      .container { padding: 0 14px; }
+      .ngo-card { padding: 18px; }
+      .info-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <a href="../index.html">←</a>
-    <h2>🏢 NGO Management</h2>
+    <a href="../index.html">&larr;</a>
+    <h2>Our NGO</h2>
   </header>
 
   <div class="container">
-    <div class="form-box">
-      <h3>Add New NGO</h3>
-      <div class="form-grid">
-        <input id="nid" placeholder="NGO ID (e.g. N4)">
-        <input id="nname" placeholder="NGO Name">
-        <input id="ncontact" placeholder="Contact Number">
-        <input id="naddress" placeholder="Address">
-        <input id="ncapacity" placeholder="Capacity (e.g. 100)" type="number">
-      </div>
-      <button onclick="addNGO()">➕ Add NGO</button>
-      <p class="msg" id="msg"></p>
-    </div>
+    <div class="ngo-card">
+      <h3 id="ngoName">Helping Hands</h3>
+      <p>This system is configured for one NGO only. Volunteers are attached to this NGO, and the admin dashboard is meant for this NGO's admin.</p>
 
-    <table>
-      <thead>
-        <tr><th>ID</th><th>NGO Name</th><th>Contact</th><th>Address</th><th>Capacity</th><th>Action</th></tr>
-      </thead>
-      <tbody id="ngoTable"></tbody>
-    </table>
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="label">NGO ID</div>
+          <div class="value" id="ngoId">N1</div>
+        </div>
+        <div class="info-box">
+          <div class="label">Contact</div>
+          <div class="value" id="ngoContact">-</div>
+        </div>
+        <div class="info-box">
+          <div class="label">Address</div>
+          <div class="value" id="ngoAddress">-</div>
+        </div>
+        <div class="info-box">
+          <div class="label">Capacity</div>
+          <div class="value" id="ngoCapacity">-</div>
+        </div>
+      </div>
+
+      <p class="helper">Multiple NGO add and delete options have been removed to match the current system rules.</p>
+    </div>
   </div>
 
   <script>
     const API = 'http://localhost:3000/api/ngos';
 
-    async function loadNGOs() {
+    async function loadNGO() {
       const res = await fetch(API);
       const data = await res.json();
-      document.getElementById('ngoTable').innerHTML = data.map(n => `
-        <tr>
-          <td>${n.NGO_ID}</td><td>${n.NGO_Name}</td><td>${n.ContactNo}</td>
-          <td>${n.Address}</td><td>${n.Capacity}</td>
-          <td><button class="del-btn" onclick="deleteNGO('${n.NGO_ID}')">Delete</button></td>
-        </tr>`).join('');
+      const ngo = Array.isArray(data) && data.length ? data[0] : null;
+
+      if (!ngo) return;
+
+      document.getElementById('ngoId').textContent = ngo.NGO_ID;
+      document.getElementById('ngoName').textContent = ngo.NGO_Name;
+      document.getElementById('ngoContact').textContent = ngo.ContactNo;
+      document.getElementById('ngoAddress').textContent = ngo.Address;
+      document.getElementById('ngoCapacity').textContent = ngo.Capacity;
     }
 
-    async function addNGO() {
-      const body = {
-        NGO_ID: document.getElementById('nid').value,
-        NGO_Name: document.getElementById('nname').value,
-        ContactNo: document.getElementById('ncontact').value,
-        Address: document.getElementById('naddress').value,
-        Capacity: document.getElementById('ncapacity').value
-      };
-      const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      document.getElementById('msg').textContent = data.message || data.error.sqlMessage;
-      loadNGOs();
-    }
-
-    async function deleteNGO(id) {
-      if (!confirm('Delete this NGO?')) return;
-      await fetch(`${API}/${id}`, { method: 'DELETE' });
-      loadNGOs();
-    }
-
-    loadNGOs();
+    loadNGO();
   </script>
 </body>
 </html>

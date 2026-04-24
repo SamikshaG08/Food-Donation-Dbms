@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Volunteer Dashboard</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -71,14 +72,22 @@
       margin-bottom: 10px;
       background: #f8fff9;
     }
-    .delivery-card .top {
+    .donation-card {
+      border: 1px solid #fde68a;
+      border-left: 4px solid #f59e0b;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      background: #fffbeb;
+    }
+    .delivery-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
     }
-    .delivery-card .info { font-size: 14px; line-height: 1.8; }
-    .delivery-card .info b { color: #1b4332; }
+    .delivery-info { font-size: 14px; line-height: 1.8; }
+    .delivery-info b { color: #1b4332; }
     .btn-group { display: flex; gap: 8px; margin-top: 10px; }
     .btn {
       padding: 8px 16px;
@@ -98,28 +107,32 @@
       font-size: 12px;
       font-weight: bold;
     }
-    .badge.pending { background: #fff3cd; color: #856404; }
-    .badge.pickedup { background: #cfe2ff; color: #084298; }
-    .badge.intransit { background: #d1ecf1; color: #0c5460; }
-    .badge.delivered { background: #d1e7dd; color: #0f5132; }
-    /* Map */
-    #map {
-      width: 100%;
-      height: 350px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-pickedup { background: #cfe2ff; color: #084298; }
+    .badge-intransit { background: #d1ecf1; color: #0c5460; }
+    .badge-delivered { background: #d1e7dd; color: #0f5132; }
+    .empty {
+      text-align: center;
+      padding: 30px;
+      color: #888;
+      font-size: 14px;
     }
-    .map-info {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-      font-size: 13px;
-      color: #555;
-    }
-    .map-info span {
-      background: #f0f4f8;
-      padding: 5px 10px;
-      border-radius: 6px;
+    @media (max-width: 760px) {
+      header {
+        padding: 14px 16px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+      .container { padding: 0 14px; }
+      .welcome, .delivery-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .stats { grid-template-columns: 1fr; }
+      .btn-group { flex-direction: column; }
+      .btn-group .btn { width: 100%; }
     }
   </style>
 </head>
@@ -132,7 +145,7 @@
 
 <div class="container">
 
-  <!-- Welcome + Rating -->
+  <!-- Welcome -->
   <div class="welcome">
     <div>
       <h2>Welcome, <span id="volName">Volunteer</span>! 👋</h2>
@@ -141,7 +154,8 @@
     <div class="rating-box">
       <div class="stars" id="volStars">—</div>
       <div class="label">Your Rating</div>
-      <div style="font-size:20px;font-weight:bold;color:#1b4332" id="volRating">0.0</div>
+      <div style="font-size:20px;font-weight:bold;color:#1b4332"
+        id="volRating">0.0</div>
     </div>
   </div>
 
@@ -161,40 +175,43 @@
     </div>
   </div>
 
-  <!-- Assigned Deliveries -->
+  <!-- Notifications -->
+<div class="section-box">
+  <h3>🔔 Notifications
+    <span id="volNotifCount"
+      style="background:#e63946;color:white;border-radius:50%;
+      padding:2px 7px;font-size:11px;margin-left:5px">0</span>
+  </h3>
+  <div id="volNotifList">Loading...</div>
+</div>
+
+  <!-- Deliveries -->
   <div class="section-box">
     <h3>📦 My Assigned Deliveries</h3>
-    <div id="deliveryList">Loading...</div>
-  </div>
-
-  <!-- Map -->
-  <div class="section-box">
-    <h3>🗺️ Delivery Map</h3>
-    <div class="map-info">
-      <span>🔵 Your Location</span>
-      <span>🔴 Recipient Location</span>
-      <span>🟡 Donor Location</span>
+    <div id="deliveryList">
+      <div class="empty">Loading...</div>
     </div>
-    <div id="map"></div>
   </div>
 
 </div>
 
 <script>
-  // Check role
   const role = localStorage.getItem('role');
   if (!role || role !== 'Volunteer') window.location.href = '../login.html';
 
   const volId = localStorage.getItem('ref_id');
   const username = localStorage.getItem('username');
   const API = 'http://localhost:3000/api';
-  let map, volunteerMarker, recipientMarkers = [];
 
   window.onload = () => {
     document.getElementById('volName').textContent = username;
     loadVolunteerInfo();
+    loadVolunteerNotifications(); // ← add this
     loadDeliveries();
-    initMap();
+    setInterval(() => {
+      loadVolunteerNotifications();
+      loadDeliveries();
+    }, 30000);
   };
 
   function logout() {
@@ -203,105 +220,116 @@
   }
 
   async function loadVolunteerInfo() {
-    const data = await fetch(`${API}/volunteers`).then(r => r.json());
-    const vol = data.find(v => v.Volunteer_ID === volId);
-    if (vol) {
-      const rating = parseFloat(vol.Rating) || 0;
-      document.getElementById('volRating').textContent = rating.toFixed(1);
-      document.getElementById('volStars').textContent = '⭐'.repeat(Math.round(rating)) || '—';
-    }
+    try {
+      const data = await fetch(`${API}/volunteers`).then(r => r.json());
+      const vol = data.find(v => v.Volunteer_ID === volId);
+      if (vol) {
+        const rating = parseFloat(vol.Rating) || 0;
+        document.getElementById('volRating').textContent = rating.toFixed(1);
+        document.getElementById('volStars').textContent =
+          rating > 0 ? '⭐'.repeat(Math.round(rating)) : '—';
+      }
+    } catch(e) {}
   }
 
   async function loadDeliveries() {
-  const [distributions, donations] = await Promise.all([
-    fetch(`${API}/distributions`).then(r => r.json()),
-    fetch(`${API}/donations`).then(r => r.json())
-  ]);
+    try {
+      const [distributions, donations] = await Promise.all([
+        fetch(`${API}/distributions`).then(r => r.json()),
+        fetch(`${API}/donations`).then(r => r.json())
+      ]);
 
-  // Get deliveries from Distributes table
-  const distDeliveries = distributions.filter(d => d.Volunteer_ID === volId);
+      const myDist = distributions.filter(d => d.Volunteer_ID === volId);
+      const myDonations = donations.filter(d =>
+        d.Volunteer_ID === volId && d.Status === 'Pending'
+      );
 
-  // Get assigned donations from Donation_Details table
-  const assignedDonations = donations.filter(d => d.Volunteer_ID === volId);
+      document.getElementById('totalAssigned').textContent =
+        myDist.filter(d => d.Delivery_Status !== 'Delivered').length + myDonations.length;
+      document.getElementById('inTransitCount').textContent =
+        myDist.filter(d => d.Delivery_Status === 'InTransit').length;
+      document.getElementById('deliveredCount').textContent =
+        myDist.filter(d => d.Delivery_Status === 'Delivered').length;
 
-  document.getElementById('totalAssigned').textContent =
-    distDeliveries.length + assignedDonations.length;
-  document.getElementById('inTransitCount').textContent =
-    distDeliveries.filter(d => d.Delivery_Status === 'InTransit').length;
-  document.getElementById('deliveredCount').textContent =
-    distDeliveries.filter(d => d.Delivery_Status === 'Delivered').length;
+      let html = '';
 
-  let html = '';
+      // Assigned donations (pickup pending)
+      myDonations.forEach(d => {
+        html += `
+          <div class="donation-card">
+            <div class="delivery-top">
+              <div class="delivery-info">
+                <b>Donation ${d.Donation_ID}</b><br>
+                Donor: ${d.Donor_ID} &nbsp;·&nbsp;
+                📅 ${new Date(d.Donation_Date).toLocaleDateString()}
+                &nbsp;·&nbsp; 🕐 ${d.Pickup_Time}
+              </div>
+              <span class="badge badge-pending">Pickup Pending</span>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-pickup"
+                onclick="markPickedUp('${d.Donation_ID}')">
+                📦 Mark Picked Up
+              </button>
+            </div>
+          </div>`;
+      });
 
-  // Show assigned donations (from Donation_Details)
-  if (assignedDonations.length > 0) {
-    html += assignedDonations.map(d => `
-      <div class="delivery-card">
-        <div class="top">
-          <div class="info">
-            <b>Donation:</b> ${d.Donation_ID} &nbsp;|&nbsp;
-            <b>Donor:</b> ${d.Donor_ID} &nbsp;|&nbsp;
-            <b>Date:</b> ${new Date(d.Donation_Date).toLocaleDateString()}<br>
-            <b>Pickup Time:</b> ${d.Pickup_Time}
-          </div>
-          <span class="badge pending">Assigned — Pickup Pending</span>
-        </div>
-        <div class="btn-group">
-          <button class="btn btn-pickup"
-            onclick="markPickedUp('${d.Donation_ID}')">
-            📦 Mark Picked Up
-          </button>
-        </div>
-      </div>`).join('');
+      // Distributions
+      myDist.forEach(d => {
+        const status = (d.Delivery_Status || 'Pending').toLowerCase();
+        html += `
+          <div class="delivery-card">
+            <div class="delivery-top">
+              <div class="delivery-info">
+                <b>Food ${d.Food_ID} → Recipient ${d.Recipient_ID}</b><br>
+                📦 ${d.Quantity_Distribution} &nbsp;·&nbsp;
+                📅 ${new Date(d.Distribution_Date).toLocaleDateString()}
+              </div>
+              <span class="badge badge-${status}">
+                ${d.Delivery_Status || 'Pending'}
+              </span>
+            </div>
+            <div class="btn-group">
+              ${d.Delivery_Status === 'Pending' ? `
+                <button class="btn btn-pickup"
+                  onclick="updateStatus('${d.Food_ID}',
+                    '${d.Recipient_ID}','PickedUp')">
+                  📦 Mark Picked Up
+                </button>` : ''}
+              ${d.Delivery_Status === 'PickedUp' ? `
+                <button class="btn btn-transit"
+                  onclick="updateStatus('${d.Food_ID}',
+                    '${d.Recipient_ID}','InTransit')">
+                  🚚 Start Delivery
+                </button>` : ''}
+              ${d.Delivery_Status === 'InTransit' ? `
+                <button class="btn btn-deliver"
+                  onclick="updateStatus('${d.Food_ID}',
+                    '${d.Recipient_ID}','Delivered')">
+                  ✅ Mark Delivered
+                </button>` : ''}
+              ${d.Delivery_Status === 'Delivered' ?
+                '<span style="color:green;font-weight:bold">✅ Delivery Complete!</span>'
+                : ''}
+            </div>
+          </div>`;
+      });
+
+      if (html === '') {
+        html = '<div class="empty">No deliveries assigned yet!</div>';
+      }
+
+      document.getElementById('deliveryList').innerHTML = html;
+
+    } catch(e) {
+      document.getElementById('deliveryList').innerHTML =
+        '<div class="empty">Error loading deliveries!</div>';
+    }
   }
 
-  // Show distributions (from Distributes table)
-  if (distDeliveries.length > 0) {
-    html += distDeliveries.map(d => `
-      <div class="delivery-card">
-        <div class="top">
-          <div class="info">
-            <b>Food:</b> ${d.Food_ID} &nbsp;|&nbsp;
-            <b>Recipient:</b> ${d.Recipient_ID} &nbsp;|&nbsp;
-            <b>Quantity:</b> ${d.Quantity_Distribution}<br>
-            <b>Date:</b> ${new Date(d.Distribution_Date).toLocaleDateString()}
-          </div>
-          <span class="badge ${(d.Delivery_Status||'pending').toLowerCase()}">
-            ${d.Delivery_Status || 'Pending'}
-          </span>
-        </div>
-        <div class="btn-group">
-          ${d.Delivery_Status === 'Pending' ? `
-            <button class="btn btn-pickup"
-              onclick="updateStatus('${d.Food_ID}','${d.Recipient_ID}','PickedUp')">
-              📦 Mark Picked Up
-            </button>` : ''}
-          ${d.Delivery_Status === 'PickedUp' ? `
-            <button class="btn btn-transit"
-              onclick="updateStatus('${d.Food_ID}','${d.Recipient_ID}','InTransit')">
-              🚚 Start Delivery
-            </button>` : ''}
-          ${d.Delivery_Status === 'InTransit' ? `
-            <button class="btn btn-deliver"
-              onclick="updateStatus('${d.Food_ID}','${d.Recipient_ID}','Delivered')">
-              ✅ Mark Delivered
-            </button>` : ''}
-          ${d.Delivery_Status === 'Delivered' ?
-            '<span style="color:green">✅ Delivery Complete!</span>' : ''}
-        </div>
-      </div>`).join('');
-  }
-
-  if (html === '') {
-    html = '<p style="text-align:center;color:#888">No deliveries assigned yet!</p>';
-  }
-
-  document.getElementById('deliveryList').innerHTML = html;
-}
-
-// ← ADD HERE
   async function markPickedUp(donationId) {
-    const res = await fetch(`${API}/donations/assign`, {
+    await fetch(`${API}/donations/assign`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -309,15 +337,12 @@
         Volunteer_ID: volId
       })
     });
-    const data = await res.json();
     alert('📦 Marked as Picked Up!');
     loadDeliveries();
   }
 
- 
-
-    async function updateStatus(foodId, recipientId, status) {
-    const res = await fetch(`${API}/distributions/status`, {
+  async function updateStatus(foodId, recipientId, status) {
+    await fetch(`${API}/distributions/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -327,9 +352,7 @@
         Delivery_Status: status
       })
     });
-    const data = await res.json();
 
-    // If delivered — send notification to recipient
     if (status === 'Delivered') {
       await fetch(`${API}/notifications`, {
         method: 'POST',
@@ -341,98 +364,53 @@
       });
     }
 
-    // If InTransit — start location tracking
-    if (status === 'InTransit') {
-      startTracking(foodId);
-    }
-
-    alert(data.message);
     loadDeliveries();
   }
+  async function loadVolunteerNotifications() {
+  try {
+    const data = await fetch(
+      `${API}/notifications/volunteer/${volId}`
+    ).then(r => r.json());
 
-  // Location tracking
-  function startTracking(donationId) {
-    if (navigator.geolocation) {
-      navigator.geolocation.watchPosition(pos => {
-        const { latitude, longitude } = pos.coords;
-        // Update location on server
-        fetch(`${API}/tracking/update`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            Volunteer_ID: volId,
-            Latitude: latitude,
-            Longitude: longitude,
-            Donation_ID: donationId
-          })
-        });
-        // Update map marker
-        if (volunteerMarker) {
-          volunteerMarker.setPosition({ lat: latitude, lng: longitude });
-          map.panTo({ lat: latitude, lng: longitude });
-        }
-      });
-    }
-  }
+    const unread = data.filter(n => !n.Is_Read);
+    document.getElementById('volNotifCount').textContent = unread.length;
 
-  // Google Maps
-  function initMap() {
-    // Default center — Pune
-    const pune = { lat: 18.5204, lng: 73.8567 };
-    map = new google.maps.Map(document.getElementById('map'), {
-      zoom: 13,
-      center: pune
-    });
-
-    // Show volunteer current location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const volPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        volunteerMarker = new google.maps.Marker({
-          position: volPos,
-          map,
-          title: 'Your Location',
-          icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-        });
-        map.setCenter(volPos);
-      });
+    if (data.length === 0) {
+      document.getElementById('volNotifList').innerHTML =
+        '<p style="text-align:center;color:#888;padding:15px">No notifications yet!</p>';
+      return;
     }
 
-    // Load recipient locations
-    loadRecipientMarkers();
+    document.getElementById('volNotifList').innerHTML = data.map(n => `
+      <div style="
+        display:flex;justify-content:space-between;align-items:center;
+        padding:12px 15px;border-radius:10px;margin-bottom:8px;
+        background:${n.Is_Read ? '#f0f4f8' : '#fff8e1'};
+        border-left:4px solid ${n.Is_Read ? '#ccc' : '#f59e0b'}">
+        <div>
+          <div style="font-size:14px">${n.Message}</div>
+          <div style="font-size:11px;color:#aaa;margin-top:3px">
+            ${new Date(n.Created_At).toLocaleString()}
+          </div>
+        </div>
+        ${!n.Is_Read ? `
+          <button onclick="markVolNotifRead(${n.Notification_ID})"
+            style="background:#1b4332;color:white;border:none;
+            padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px">
+            Mark Read
+          </button>` :
+          '<span style="font-size:12px;color:#aaa">Read ✓</span>'}
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('volNotifList').innerHTML =
+      '<p style="text-align:center;color:#888;padding:15px">No notifications yet!</p>';
   }
+}
 
-  async function loadRecipientMarkers() {
-    const data = await fetch(`${API}/recipients`).then(r => r.json());
-    data.forEach(r => {
-      if (r.Latitude && r.Longitude) {
-        const marker = new google.maps.Marker({
-          position: { lat: parseFloat(r.Latitude), lng: parseFloat(r.Longitude) },
-          map,
-          title: `Recipient: ${r.Name}`,
-          icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-        });
-        const infoWindow = new google.maps.InfoWindow({
-          content: `<b>${r.Name}</b><br>${r.Location}<br>📞 ${r.Contact}`
-        });
-        marker.addListener('click', () => infoWindow.open(map, marker));
-      }
-    });
-  }
-</script>
-
-<!-- Replace YOUR_API_KEY with your Google Maps API key -->
-<script>
-  function initMap() {
-    document.getElementById('map').innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;
-        height:100%;color:#888;flex-direction:column;gap:10px">
-        <div style="font-size:40px">🗺️</div>
-        <div style="font-size:14px">Map coming soon!</div>
-        <div style="font-size:12px">Google Maps API key needed</div>
-      </div>`;
-  }
-  initMap();
+async function markVolNotifRead(id) {
+  await fetch(`${API}/notifications/volunteer/read/${id}`, { method: 'PUT' });
+  loadVolunteerNotifications();
+}
 </script>
 </body>
 </html>

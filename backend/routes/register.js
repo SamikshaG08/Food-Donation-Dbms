@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const DEFAULT_NGO_ID = 'N1';
 
 // Register new Donor
 router.post('/donor', (req, res) => {
@@ -39,14 +40,14 @@ router.post('/donor', (req, res) => {
 router.post('/volunteer', (req, res) => {
   const {
     Volunteer_ID, Name, Phone, Email,
-    Password, Area_Assigned, NGO_ID
+    Password, Area_Assigned
   } = req.body;
 
   db.query(
     `INSERT INTO Volunteer
      (Volunteer_ID, Name, Phone, Area_Assigned, Availability_Status, NGO_ID)
      VALUES (?,?,?,?,'Available',?)`,
-    [Volunteer_ID, Name, Phone, Area_Assigned, NGO_ID],
+    [Volunteer_ID, Name, Phone, Area_Assigned, DEFAULT_NGO_ID],
     (err) => {
       if (err) return res.status(500).json({ error: err.sqlMessage });
 

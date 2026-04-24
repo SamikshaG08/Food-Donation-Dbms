@@ -115,6 +115,10 @@ CREATE TABLE Distributes (
   Distribution_Date     DATE,
   Quantity_Distribution VARCHAR(50),
   Delivery_Status       ENUM('Pending','PickedUp','InTransit','Delivered') DEFAULT 'Pending',
+  Recipient_Accepted    BOOLEAN DEFAULT FALSE,
+  Accepted_At           TIMESTAMP NULL,
+  Recipient_Rating      INT CHECK (Recipient_Rating BETWEEN 1 AND 5),
+  Rated_At              TIMESTAMP NULL,
   PRIMARY KEY (Food_ID, Recipient_ID, Volunteer_ID),
   FOREIGN KEY (Food_ID)      REFERENCES Food_Item(Food_ID),
   FOREIGN KEY (Recipient_ID) REFERENCES Recipient(Recipient_ID),
@@ -142,6 +146,27 @@ CREATE TABLE Notifications (
   Is_Read         BOOLEAN      DEFAULT FALSE,
   Created_At      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (Recipient_ID) REFERENCES Recipient(Recipient_ID)
+);
+
+-- Table 10A: AdminNotifications
+-- Stores persistent admin alerts, so admin can see them after logging in
+CREATE TABLE AdminNotifications (
+  Notification_ID INT          AUTO_INCREMENT PRIMARY KEY,
+  Message         VARCHAR(255) NOT NULL,
+  Type            VARCHAR(50)  DEFAULT 'general',
+  Is_Read         BOOLEAN      DEFAULT FALSE,
+  Created_At      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table 10B: VolunteerNotifications
+-- Stores persistent volunteer alerts, so volunteers can see them after logging in
+CREATE TABLE VolunteerNotifications (
+  Notification_ID INT          AUTO_INCREMENT PRIMARY KEY,
+  Volunteer_ID    VARCHAR(10),
+  Message         VARCHAR(255) NOT NULL,
+  Is_Read         BOOLEAN      DEFAULT FALSE,
+  Created_At      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (Volunteer_ID) REFERENCES Volunteer(Volunteer_ID)
 );
 
 -- Table 11: DeliveryTracking
@@ -183,11 +208,13 @@ CREATE TABLE FoodRequests (
   Request_ID     VARCHAR(20) PRIMARY KEY,
   Recipient_ID   VARCHAR(10),
   Food_ID        VARCHAR(10),
+  Donation_ID    VARCHAR(10),
   Quantity_Needed VARCHAR(50),
   Request_Date   DATE        DEFAULT (CURDATE()),
   Status         ENUM('Pending','Approved','Rejected') DEFAULT 'Pending',
   FOREIGN KEY (Recipient_ID) REFERENCES Recipient(Recipient_ID),
-  FOREIGN KEY (Food_ID)      REFERENCES Food_Item(Food_ID)
+  FOREIGN KEY (Food_ID)      REFERENCES Food_Item(Food_ID),
+  FOREIGN KEY (Donation_ID)  REFERENCES Donation_Details(Donation_ID)
 );
 
 -- ============================================================
@@ -200,6 +227,18 @@ ADD FOREIGN KEY (Volunteer_ID) REFERENCES Volunteer(Volunteer_ID);
 
 -- Increased User_ID size to accommodate generated IDs
 ALTER TABLE Users MODIFY User_ID VARCHAR(20);
+
+-- Link each recipient request to the exact available donation item being ordered
+-- For an existing database, run:
+-- ALTER TABLE FoodRequests ADD COLUMN Donation_ID VARCHAR(10) AFTER Food_ID;
+-- ALTER TABLE FoodRequests ADD FOREIGN KEY (Donation_ID) REFERENCES Donation_Details(Donation_ID);
+
+-- Store one recipient rating per completed delivery
+-- For an existing database, run:
+-- ALTER TABLE Distributes ADD COLUMN Recipient_Accepted BOOLEAN DEFAULT FALSE;
+-- ALTER TABLE Distributes ADD COLUMN Accepted_At TIMESTAMP NULL;
+-- ALTER TABLE Distributes ADD COLUMN Recipient_Rating INT NULL;
+-- ALTER TABLE Distributes ADD COLUMN Rated_At TIMESTAMP NULL;
 
 -- ============================================================
 -- STEP 4: INSERT SAMPLE DATA (DML Commands)
@@ -315,6 +354,7 @@ ORDER BY Rating DESC;
 
 -- 5. View all food requests with recipient names
 SELECT fr.Request_ID, r.Name AS Recipient_Name,
+       fr.Donation_ID,
        fi.Food_Name, fr.Quantity_Needed,
        fr.Request_Date, fr.Status
 FROM FoodRequests fr
