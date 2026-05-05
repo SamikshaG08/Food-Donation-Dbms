@@ -31,17 +31,22 @@ function getTransportConfig() {
   };
 }
 
+function getDefaultSender() {
+  return process.env.MAIL_FROM || process.env.SMTP_USER || '';
+}
+
 async function sendEmail({ from, to, subject, text, replyTo, sender }) {
   const transportConfig = getTransportConfig();
+  const safeFrom = from || getDefaultSender();
 
-  if (!transportConfig || !to) {
+  if (!transportConfig || !to || !safeFrom) {
     return { sent: false, reason: 'smtp_not_configured' };
   }
 
   const transporter = nodemailer.createTransport(transportConfig);
 
   await transporter.sendMail({
-    from,
+    from: safeFrom,
     replyTo,
     sender,
     to,
@@ -53,5 +58,6 @@ async function sendEmail({ from, to, subject, text, replyTo, sender }) {
 }
 
 module.exports = {
-  sendEmail
+  sendEmail,
+  getDefaultSender
 };

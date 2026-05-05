@@ -24,7 +24,7 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    .container { max-width: 900px; margin: 25px auto; padding: 0 20px; }
+    .container { max-width: 980px; margin: 25px auto; padding: 0 20px; }
     .welcome {
       background: white;
       padding: 20px;
@@ -32,9 +32,30 @@
       margin-bottom: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.08);
       border-left: 5px solid #40916c;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
     }
-    .welcome h2 { color: #1b4332; }
-    .welcome p { color: #888; font-size: 14px; margin-top: 5px; }
+    .welcome h2 { color: #1b4332; margin-bottom: 6px; }
+    .welcome p { color: #666; font-size: 14px; }
+    .location-box {
+      min-width: 220px;
+      background: #f8fff9;
+      border: 1px solid #b7e4c7;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .location-box .label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .location-box .value {
+      color: #1b4332;
+      font-weight: bold;
+      font-size: 15px;
+    }
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -50,7 +71,7 @@
       border-left: 4px solid #40916c;
     }
     .stat-card .num { font-size: 28px; font-weight: bold; color: #1b4332; }
-    .stat-card .label { color: #888; font-size: 13px; }
+    .stat-card .label { color: #888; font-size: 13px; margin-top: 4px; }
     .section-box {
       background: white;
       border-radius: 12px;
@@ -58,51 +79,98 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.08);
       margin-bottom: 20px;
     }
-    .section-box h3 { color: #1b4332; margin-bottom: 15px; }
+    .section-box h3 { color: #1b4332; margin-bottom: 8px; }
+    .section-hint {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
     .form-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .food-items-box {
-      margin-top: 14px;
-      padding: 14px;
-      border: 1px solid #d8f3dc;
-      border-radius: 10px;
-      background: #f8fff9;
-    }
-    .food-items-box h4 {
-      color: #1b4332;
-      margin-bottom: 12px;
-      font-size: 15px;
-    }
-    .food-item-row {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      color: #1b4332;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .field.span-2 {
+      grid-column: span 2;
     }
     input, select {
       width: 100%;
-      padding: 9px;
+      padding: 10px;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
     }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #40916c;
+    }
+    input[readonly] {
+      background: #f8f9fa;
+      color: #666;
+    }
+    .food-items-box {
+      border: 1px solid #dce9df;
+      border-radius: 10px;
+      padding: 15px;
+      background: #f8fff9;
+      margin-bottom: 15px;
+    }
+    .food-items-box h4 {
+      color: #1b4332;
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+    .food-items-box p {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    .food-item-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr) auto;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: end;
+      padding: 12px;
+      border: 1px solid #dce9df;
+      border-radius: 10px;
+      background: white;
+    }
+    .food-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .food-field label {
+      color: #1b4332;
+      font-size: 11px;
+      font-weight: bold;
+    }
     button {
-      margin-top: 15px;
-      padding: 10px 25px;
-      background: #1b4332;
+      padding: 10px 18px;
+      background: #2d6a4f;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 15px;
+      font-size: 14px;
     }
     button:hover { background: #40916c; }
+    .logout:hover { background: #d62839; }
     .mini-btn {
+      padding: 9px 12px;
       margin-top: 0;
-      padding: 9px 14px;
       font-size: 13px;
     }
     .secondary-btn {
@@ -110,32 +178,69 @@
       color: #1b4332;
       border: 1px solid #1b4332;
     }
-    .msg { margin-top: 10px; font-weight: bold; color: green; }
+    .secondary-btn:hover {
+      background: #ecfdf3;
+    }
+    .msg {
+      margin-top: 10px;
+      font-weight: bold;
+      min-height: 20px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
     table {
       width: 100%;
-      min-width: 620px;
+      min-width: 760px;
       border-collapse: collapse;
-      display: block;
-      overflow-x: auto;
-      white-space: nowrap;
     }
     th {
-      background: #1b4332;
+      background: #2d6a4f;
       color: white;
-      padding: 10px;
+      padding: 12px;
       text-align: left;
-      font-size: 13px;
     }
-    td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-    tr:hover td { background: #f0f4f8; }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      vertical-align: top;
+      background: white;
+    }
+    tr:hover td { background: #f8fbfd; }
     .badge {
-      padding: 3px 10px;
+      display: inline-block;
+      padding: 4px 10px;
       border-radius: 20px;
       font-size: 12px;
       font-weight: bold;
     }
     .badge.pending { background: #fff3cd; color: #856404; }
+    .badge.partially-fulfilled { background: #dbeafe; color: #1d4ed8; }
     .badge.collected { background: #d1e7dd; color: #0f5132; }
+    .badge.expired { background: #f8d7da; color: #842029; }
+    .badge.cancelled { background: #e5e7eb; color: #374151; }
+    .empty-row td {
+      text-align: center;
+      color: #888;
+      padding: 24px 12px;
+    }
+    @media (max-width: 920px) {
+      .welcome {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .stats,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .field.span-2 {
+        grid-column: span 1;
+      }
+      .food-item-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
     @media (max-width: 700px) {
       header {
         padding: 14px 16px;
@@ -144,8 +249,16 @@
         text-align: center;
       }
       .container { padding: 0 14px; }
-      .stats, .form-grid, .food-item-row { grid-template-columns: 1fr; }
       .section-box { padding: 16px; }
+      .food-item-row {
+        grid-template-columns: 1fr;
+      }
+      button {
+        width: 100%;
+      }
+      .mini-btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -158,8 +271,14 @@
 
 <div class="container">
   <div class="welcome">
-    <h2>Welcome, <span id="donorName">Donor</span>!</h2>
-    <p>Manage your food donations and track their status here.</p>
+    <div>
+      <h2>Welcome, <span id="donorName">Donor</span>!</h2>
+      <p>Add your donation details here. The donor location below is the one used for volunteer matching.</p>
+    </div>
+    <div class="location-box">
+      <div class="label">Donor Location</div>
+      <div class="value" id="donorLocationText">Loading...</div>
+    </div>
   </div>
 
   <div class="stats">
@@ -172,46 +291,68 @@
       <div class="label">Pending</div>
     </div>
     <div class="stat-card">
-      <div class="num" id="collectedCount">0</div>
-      <div class="label">Collected</div>
+      <div class="num" id="resolvedCount">0</div>
+      <div class="label">Collected / Expired</div>
     </div>
   </div>
 
   <div class="section-box">
     <h3>Add New Donation</h3>
     <div class="form-grid">
-      <input id="dnid" placeholder="Donation ID (e.g. DN4)">
-      <input id="dndate" type="date">
-      <input id="dntime" type="time">
-      <select id="dnstatus">
-        <option value="Pending">Pending</option>
-        <option value="Collected">Collected</option>
-      </select>
+      <div class="field">
+        <label for="dnid">Donation ID</label>
+        <input id="dnid" placeholder="e.g. DN4">
+      </div>
+      <div class="field">
+        <label for="dndate">Donation Date</label>
+        <input id="dndate" type="date">
+      </div>
+      <div class="field">
+        <label for="dntime">Pickup Time</label>
+        <input id="dntime" type="time">
+      </div>
+      <div class="field">
+        <label for="dnstatus">Status</label>
+        <select id="dnstatus">
+          <option value="Pending">Pending</option>
+          <option value="Collected">Collected</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dnlocation">Donor Location</label>
+        <input id="dnlocation" readonly placeholder="Loading donor location">
+      </div>
     </div>
+
     <div class="food-items-box">
       <h4>Food Items In This Donation</h4>
+      <p>Add each food item separately with prepared time, expiry time, and quantity.</p>
       <div id="foodItemsList"></div>
       <button class="mini-btn secondary-btn" type="button" onclick="addFoodItemRow()">+ Add Another Food Item</button>
     </div>
+
     <button onclick="addDonation()">Add Donation</button>
     <p class="msg" id="msg"></p>
   </div>
 
   <div class="section-box">
     <h3>My Donations</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Date</th>
-          <th>Pickup Time</th>
-          <th>Food Items</th>
-          <th>Status</th>
-          <th>Assigned Volunteer</th>
-        </tr>
-      </thead>
-      <tbody id="donationTable"></tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Pickup Time</th>
+            <th>Food Items</th>
+            <th>Status</th>
+            <th>Assigned Volunteer</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="donationTable"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -222,29 +363,98 @@
   const donorId = localStorage.getItem('ref_id');
   const username = localStorage.getItem('username');
   const API = 'http://localhost:3000/api';
+  const POLL_MS = 5000;
+  let pollHandle = null;
+  let donorLocation = '';
 
-  window.onload = () => {
-    document.getElementById('donorName').textContent = username;
+  window.onload = async () => {
+    document.getElementById('donorName').textContent = username || 'Donor';
+    await loadDonorProfile();
     addFoodItemRow();
     loadMyDonations();
+    startPolling();
   };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+      return;
+    }
+    loadMyDonations();
+    startPolling();
+  });
+
+  window.addEventListener('focus', () => {
+    loadMyDonations();
+    startPolling();
+  });
 
   function logout() {
     localStorage.clear();
     window.location.href = '../login.html';
   }
 
+  function startPolling() {
+    stopPolling();
+    pollHandle = setInterval(loadMyDonations, POLL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollHandle) return;
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
+
+  async function loadDonorProfile() {
+    try {
+      const res = await fetch(`${API}/donors/${donorId}`);
+      const donor = await res.json();
+
+      if (donor?.error) throw new Error(donor.error);
+
+      donorLocation = [donor.Street, donor.City, donor.Pincode].filter(Boolean).join(', ') || donor.City || 'Not available';
+      document.getElementById('donorName').textContent = donor.Name || username || 'Donor';
+      document.getElementById('donorLocationText').textContent = donorLocation;
+      document.getElementById('dnlocation').value = donorLocation;
+    } catch (err) {
+      donorLocation = 'Not available';
+      document.getElementById('donorLocationText').textContent = donorLocation;
+      document.getElementById('dnlocation').value = donorLocation;
+    }
+  }
+
   function createFoodItemRow(index) {
     return `
       <div class="food-item-row">
-        <input class="foodid" placeholder="Food ID (e.g. F${index + 1})">
-        <input class="foodname" placeholder="Food name">
-        <input class="foodtype" placeholder="Food type">
-        <input class="shelflife" placeholder="Shelf life">
-        <div style="display:grid;grid-template-columns:1fr auto;gap:10px;">
-          <input class="quantity" placeholder="Quantity available">
-          <button class="mini-btn" type="button" onclick="removeFoodItemRow(this)">Remove</button>
+        <div class="food-field">
+          <label>Food ID</label>
+          <input class="foodid" placeholder="F${index + 1}">
         </div>
+        <div class="food-field">
+          <label>Food Name</label>
+          <input class="foodname" placeholder="Rice, Bread...">
+        </div>
+        <div class="food-field">
+          <label>Food Type</label>
+          <input class="foodtype" placeholder="Veg, Dairy...">
+        </div>
+        <div class="food-field">
+          <label>Shelf Life</label>
+          <input class="shelflife" placeholder="2 days">
+        </div>
+        <div class="food-field">
+          <label>Prepared Time</label>
+          <input class="preparedtime" type="datetime-local" title="Prepared time">
+        </div>
+        <div class="food-field">
+          <label>Expiry Time</label>
+          <input class="expirytime" type="datetime-local" title="Expiry time">
+        </div>
+        <div class="food-field">
+          <label>Quantity</label>
+          <input class="quantity" placeholder="2 kg">
+        </div>
+        <button class="mini-btn" type="button" onclick="removeFoodItemRow(this)">Remove</button>
       </div>
     `;
   }
@@ -258,6 +468,13 @@
     const list = document.getElementById('foodItemsList');
     if (list.children.length === 1) return;
     button.closest('.food-item-row').remove();
+  }
+
+  function getStatusClass(status) {
+    return String(status || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-');
   }
 
   async function loadMyDonations() {
@@ -279,7 +496,10 @@
         }
 
         if (d.Food_Name || d.Quantity) {
-          grouped.get(d.Donation_ID).items.push(`${d.Food_Name || '-'} (${d.Quantity || '-'})`);
+          const expiry = d.Expiry_Time
+            ? `, expires ${new Date(d.Expiry_Time).toLocaleString()}`
+            : '';
+          grouped.get(d.Donation_ID).items.push(`${d.Food_Name || '-'} (${d.Quantity || '-'}${expiry})`);
         }
       });
 
@@ -287,21 +507,37 @@
 
     document.getElementById('totalDonations').textContent = myDonations.length;
     document.getElementById('pendingCount').textContent =
-      myDonations.filter(d => d.Status === 'Pending').length;
-    document.getElementById('collectedCount').textContent =
-      myDonations.filter(d => d.Status === 'Collected').length;
+      myDonations.filter(d => d.Status === 'Pending' || d.Status === 'Partially Fulfilled').length;
+    document.getElementById('resolvedCount').textContent =
+      myDonations.filter(d => ['Collected', 'Expired', 'Cancelled'].includes(d.Status)).length;
 
     document.getElementById('donationTable').innerHTML = myDonations.length === 0
-      ? '<tr><td colspan="6" style="text-align:center;color:#888">No donations yet!</td></tr>'
+      ? '<tr class="empty-row"><td colspan="7">No donations yet. Add your first donation above.</td></tr>'
       : myDonations.map(d => `
           <tr>
             <td>${d.Donation_ID}</td>
             <td>${new Date(d.Donation_Date).toLocaleDateString()}</td>
             <td>${d.Pickup_Time}</td>
             <td>${d.items.length ? d.items.join(', ') : '-'}</td>
-            <td><span class="badge ${d.Status === 'Pending' ? 'pending' : 'collected'}">${d.Status}</span></td>
+            <td><span class="badge ${getStatusClass(d.Status)}">${d.Status}</span></td>
             <td>${d.Volunteer_ID || 'Not assigned yet'}</td>
+            <td>${['Pending', 'Partially Fulfilled'].includes(d.Status)
+              ? `<button class="mini-btn" type="button" onclick="cancelDonation('${d.Donation_ID}')">Cancel</button>`
+              : '-'}</td>
           </tr>`).join('');
+  }
+
+  async function cancelDonation(donationId) {
+    const res = await fetch(`${API}/donations/cancel`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ Donation_ID: donationId })
+    });
+
+    const data = await res.json();
+    document.getElementById('msg').textContent = data.message || data.error || 'Unable to cancel donation';
+    document.getElementById('msg').style.color = data.message ? 'green' : 'red';
+    loadMyDonations();
   }
 
   async function addDonation() {
@@ -310,6 +546,8 @@
       Food_Name: row.querySelector('.foodname').value.trim(),
       Food_Type: row.querySelector('.foodtype').value.trim(),
       Shelf_Life: row.querySelector('.shelflife').value.trim(),
+      Prepared_Time: row.querySelector('.preparedtime').value,
+      Expiry_Time: row.querySelector('.expirytime').value,
       Quantity: row.querySelector('.quantity').value.trim()
     }));
 
@@ -324,7 +562,8 @@
 
     if (!body.Donation_ID || !body.Donation_Date || !body.Pickup_Time ||
         foodItems.length === 0 ||
-        foodItems.some(item => !item.Food_ID || !item.Food_Name || !item.Food_Type || !item.Shelf_Life || !item.Quantity)) {
+        foodItems.some(item => !item.Food_ID || !item.Food_Name || !item.Food_Type ||
+          !item.Shelf_Life || !item.Prepared_Time || !item.Expiry_Time || !item.Quantity)) {
       document.getElementById('msg').textContent = 'Please fill all donation and food fields!';
       document.getElementById('msg').style.color = 'red';
       return;

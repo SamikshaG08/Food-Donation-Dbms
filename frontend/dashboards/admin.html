@@ -41,6 +41,66 @@
     }
     .stat-card .num { font-size: 32px; font-weight: bold; color: #1b4332; }
     .stat-card .label { color: #888; font-size: 13px; margin-top: 5px; }
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .insight-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-top: 4px solid #40916c;
+    }
+    .insight-card h3 {
+      color: #1b4332;
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+    .insight-value {
+      color: #1b4332;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .insight-subtext {
+      color: #666;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .performance-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .performance-card {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      border-left: 4px solid #1b4332;
+    }
+    .performance-card .title {
+      color: #666;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .performance-card .value {
+      color: #1b4332;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .performance-card .meta {
+      color: #888;
+      font-size: 13px;
+      line-height: 1.4;
+    }
     .tabs {
       display: flex;
       gap: 10px;
@@ -151,7 +211,9 @@
       font-weight: bold;
     }
     .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-partially-fulfilled { background: #dbeafe; color: #1d4ed8; }
     .badge-collected { background: #d1e7dd; color: #0f5132; }
+    .badge-cancelled { background: #e5e7eb; color: #374151; }
     .badge-delivered { background: #cfe2ff; color: #084298; }
     .badge-available { background: #d1e7dd; color: #0f5132; }
     .badge-busy { background: #fff3cd; color: #856404; }
@@ -183,6 +245,7 @@
       }
       .container { padding: 0 14px; }
       .stats { grid-template-columns: 1fr 1fr; }
+      .insights-grid, .performance-list { grid-template-columns: 1fr 1fr; }
       .pending-card, .request-card {
         flex-direction: column;
         align-items: flex-start;
@@ -195,7 +258,7 @@
       select, .btn { width: 100%; margin-right: 0; }
     }
     @media (max-width: 520px) {
-      .stats { grid-template-columns: 1fr; }
+      .stats, .insights-grid, .performance-list { grid-template-columns: 1fr; }
       .tabs { flex-direction: column; }
       .tab { width: 100%; }
       .section-box { padding: 16px; }
@@ -241,6 +304,47 @@
     <div id="adminNotifList">Loading...</div>
   </div>
 </div>
+  </div>
+
+  <div class="insights-grid">
+    <div class="insight-card">
+      <h3>Total Food Saved</h3>
+      <div class="insight-value" id="foodSavedValue">0</div>
+      <div class="insight-subtext" id="foodSavedSubtext">Delivered quantity rescued from waste.</div>
+    </div>
+    <div class="insight-card">
+      <h3>Successful Deliveries</h3>
+      <div class="insight-value" id="successfulDeliveriesValue">0</div>
+      <div class="insight-subtext" id="successfulDeliveriesSubtext">Completed deliveries confirmed in the system.</div>
+    </div>
+    <div class="insight-card">
+      <h3>Waste Reduction</h3>
+      <div class="insight-value" id="wasteReductionValue">0%</div>
+      <div class="insight-subtext" id="wasteReductionSubtext">Rescued donations compared with expired donations.</div>
+    </div>
+    <div class="insight-card">
+      <h3>Volunteer Reach</h3>
+      <div class="insight-value" id="volunteerReachValue">0</div>
+      <div class="insight-subtext" id="volunteerReachSubtext">Volunteers who have completed at least one delivery.</div>
+    </div>
+  </div>
+
+  <div class="performance-list">
+    <div class="performance-card">
+      <div class="title">Top Volunteer</div>
+      <div class="value" id="topVolunteerValue">No ratings yet</div>
+      <div class="meta" id="topVolunteerMeta">Waiting for recipient feedback.</div>
+    </div>
+    <div class="performance-card">
+      <div class="title">Average Rating</div>
+      <div class="value" id="avgVolunteerRatingValue">0.0</div>
+      <div class="meta" id="avgVolunteerRatingMeta">Across volunteers who have been rated.</div>
+    </div>
+    <div class="performance-card">
+      <div class="title">Response Overview</div>
+      <div class="value" id="responseOverviewValue">0 approved</div>
+      <div class="meta" id="responseOverviewMeta">Recipient requests approved and moving toward delivery.</div>
+    </div>
   </div>
 
   <!-- Tabs -->
@@ -379,24 +483,51 @@
   if (!role || role !== 'Admin') window.location.href = '../login.html';
 
   const API = 'http://localhost:3000/api';
+  const POLL_MS = 5000;
+  let pollHandle = null;
 
   window.onload = () => {
+    refreshRealtimeData();
+    loadDonors();
+    loadRecipients();
+    loadNGOs();
+    loadAdminNotifications(); // ← add this
+    startPolling();
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+      return;
+    }
+    refreshRealtimeData();
+    startPolling();
+  });
+
+  window.addEventListener('focus', () => {
+    refreshRealtimeData();
+    startPolling();
+  });
+
+  function startPolling() {
+    stopPolling();
+    pollHandle = setInterval(refreshRealtimeData, POLL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollHandle) return;
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
+
+  function refreshRealtimeData() {
     loadStats();
     loadPending();
     loadRequestsWithAssignment();
-    loadDonors();
     loadVolunteers();
-    loadRecipients();
     loadDeliveries();
-    loadNGOs();
-    loadAdminNotifications(); // ← add this
-    setInterval(() => {
-      loadStats();
-      loadPending();
-      loadRequestsWithAssignment();
-      loadAdminNotifications();
-    }, 30000);
-  };
+    loadAdminNotifications();
+  }
 
   function showTab(tab, btn) {
     document.querySelectorAll('.section')
@@ -413,16 +544,113 @@
   }
 
   async function loadStats() {
-    const [donors, donations, volunteers] = await Promise.all([
+    const [donors, donations, volunteers, deliveries, requests] = await Promise.all([
       fetch(`${API}/donors`).then(r => r.json()),
       fetch(`${API}/donations`).then(r => r.json()),
-      fetch(`${API}/volunteers`).then(r => r.json())
+      fetch(`${API}/volunteers`).then(r => r.json()),
+      fetch(`${API}/distributions`).then(r => r.json()),
+      fetch(`${API}/foodrequests`).then(r => r.json())
     ]);
     document.getElementById('totalDonors').textContent = donors.length;
     document.getElementById('totalDonations').textContent = donations.length;
     document.getElementById('totalVolunteers').textContent = volunteers.length;
     document.getElementById('pendingDonations').textContent =
-      donations.filter(d => d.Status === 'Pending' && !d.Volunteer_ID).length;
+      donations.filter(d =>
+        ['Pending', 'Partially Fulfilled'].includes(d.Status) && !d.Volunteer_ID
+      ).length;
+
+    renderInsights({ donations, volunteers, deliveries, requests });
+  }
+
+  function parseQuantityValue(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)?$/i);
+    if (!match) return null;
+    return {
+      amount: Number(match[1]),
+      unit: (match[2] || 'items').toLowerCase()
+    };
+  }
+
+  function sumQuantities(values) {
+    const totals = new Map();
+
+    values.forEach(value => {
+      const parsed = parseQuantityValue(value);
+      if (!parsed) return;
+      totals.set(parsed.unit, (totals.get(parsed.unit) || 0) + parsed.amount);
+    });
+
+    return totals;
+  }
+
+  function formatQuantityTotals(totals) {
+    const parts = Array.from(totals.entries()).map(([unit, amount]) => {
+      const rounded = Number.isInteger(amount) ? amount : Number(amount.toFixed(2));
+      return `${rounded} ${unit}`;
+    });
+
+    return parts.length > 0 ? parts.join(' + ') : '0';
+  }
+
+  function renderInsights({ donations, volunteers, deliveries, requests }) {
+    const deliveredEntries = deliveries.filter(d => d.Delivery_Status === 'Delivered');
+    const deliveredTotals = sumQuantities(deliveredEntries.map(d => d.Quantity_Distribution));
+    const foodSavedText = formatQuantityTotals(deliveredTotals);
+
+    const rescuedDonations = donations.filter(d => d.Status === 'Collected').length;
+    const expiredDonations = donations.filter(d => d.Status === 'Expired').length;
+    const rescueBase = rescuedDonations + expiredDonations;
+    const wasteReductionRate = rescueBase > 0
+      ? Math.round((rescuedDonations / rescueBase) * 100)
+      : 0;
+
+    const ratedVolunteers = volunteers.filter(v => Number(v.Rating || 0) > 0);
+    const topVolunteer = [...ratedVolunteers]
+      .sort((a, b) => {
+        const ratingDiff = Number(b.Rating || 0) - Number(a.Rating || 0);
+        if (ratingDiff !== 0) return ratingDiff;
+        return Number(b.Total_Deliveries || 0) - Number(a.Total_Deliveries || 0);
+      })[0];
+
+    const avgRating = ratedVolunteers.length > 0
+      ? ratedVolunteers.reduce((sum, volunteer) => sum + Number(volunteer.Rating || 0), 0) / ratedVolunteers.length
+      : 0;
+
+    const activeVolunteers = volunteers.filter(v => Number(v.Total_Deliveries || 0) > 0).length;
+    const approvedRequests = requests.filter(r => r.Status === 'Approved').length;
+    const pendingRequests = requests.filter(r => r.Status === 'Pending').length;
+
+    document.getElementById('foodSavedValue').textContent = foodSavedText;
+    document.getElementById('foodSavedSubtext').textContent =
+      `${deliveredEntries.length} successful delivery record${deliveredEntries.length === 1 ? '' : 's'} rescued before expiry.`;
+
+    document.getElementById('successfulDeliveriesValue').textContent = deliveredEntries.length;
+    document.getElementById('successfulDeliveriesSubtext').textContent =
+      `${approvedRequests} approved request${approvedRequests === 1 ? '' : 's'} have already been matched to delivery work.`;
+
+    document.getElementById('wasteReductionValue').textContent = `${wasteReductionRate}%`;
+    document.getElementById('wasteReductionSubtext').textContent =
+      `${rescuedDonations} collected donation${rescuedDonations === 1 ? '' : 's'} versus ${expiredDonations} expired donation${expiredDonations === 1 ? '' : 's'}.`;
+
+    document.getElementById('volunteerReachValue').textContent = activeVolunteers;
+    document.getElementById('volunteerReachSubtext').textContent =
+      `${volunteers.length} total volunteer${volunteers.length === 1 ? '' : 's'} registered in the network.`;
+
+    document.getElementById('topVolunteerValue').textContent =
+      topVolunteer ? `${topVolunteer.Name} (${Number(topVolunteer.Rating || 0).toFixed(1)}/5)` : 'No ratings yet';
+    document.getElementById('topVolunteerMeta').textContent =
+      topVolunteer
+        ? `${topVolunteer.Total_Deliveries || 0} rated delivery record${Number(topVolunteer.Total_Deliveries || 0) === 1 ? '' : 's'} in ${topVolunteer.Area_Assigned || 'assigned area'}.`
+        : 'Waiting for recipients to submit ratings.';
+
+    document.getElementById('avgVolunteerRatingValue').textContent = avgRating.toFixed(1);
+    document.getElementById('avgVolunteerRatingMeta').textContent =
+      `${ratedVolunteers.length} volunteer${ratedVolunteers.length === 1 ? '' : 's'} currently have recipient ratings.`;
+
+    document.getElementById('responseOverviewValue').textContent = `${approvedRequests} approved`;
+    document.getElementById('responseOverviewMeta').textContent =
+      `${pendingRequests} request${pendingRequests === 1 ? '' : 's'} are still waiting for action or matching.`;
   }
 
   async function loadPending() {
@@ -431,12 +659,6 @@
       fetch(`${API}/volunteers`).then(r => r.json())
     ]);
     const pending = donations.filter(d => d.Status === 'Pending' && !d.Volunteer_ID);
-    const volOptions = volunteers.map(v =>
-      `<option value="${v.Volunteer_ID}">
-        ${v.Name} (${v.Area_Assigned})
-        ⭐${parseFloat(v.Rating||0).toFixed(1)}
-      </option>`
-    ).join('');
 
     if (pending.length === 0) {
       document.getElementById('pendingList').innerHTML =
@@ -448,12 +670,13 @@
       <div class="pending-card">
         <div class="info">
           <b>Donation ${d.Donation_ID}</b> — Donor: ${d.Donor_ID}<br>
+          Donor location: ${d.Donor_City || '-'}<br>
           📅 ${new Date(d.Donation_Date).toLocaleDateString()}
           🕐 ${d.Pickup_Time}
           <span class="badge badge-pending">Pending</span>
         </div>
         <div>
-          <select id="vol_${d.Donation_ID}">${volOptions}</select>
+          <select id="vol_${d.Donation_ID}">${buildVolunteerOptions(volunteers, d.Donor_City)}</select>
           <button class="btn btn-green"
             onclick="assignVolunteer('${d.Donation_ID}')">
             Assign →
@@ -528,18 +751,7 @@
     }
 
     document.getElementById('requestList').innerHTML = data.map(r => {
-      const location = (r.Recipient_Location || '').toLowerCase();
-      const availableVolunteers = volunteers.filter(v => v.Availability_Status === 'Available');
-      const nearby = availableVolunteers.filter(v => {
-        const area = (v.Area_Assigned || '').toLowerCase();
-        return location && area && (area === location || area.includes(location) || location.includes(area));
-      });
-      const optionSource = nearby.length > 0 ? nearby : availableVolunteers;
-      const volOptions = optionSource.map(v =>
-        `<option value="${v.Volunteer_ID}">
-          ${v.Name} - ${v.Area_Assigned}${nearby.includes(v) ? ' (nearby)' : ''}
-        </option>`
-      ).join('');
+      const volOptions = buildVolunteerOptions(volunteers, r.Donor_City || r.Recipient_Location);
 
       const assignedVolunteer = r.Assigned_Volunteer_Name
         ? `Assigned volunteer: ${r.Assigned_Volunteer_Name} (${r.Assigned_Volunteer_ID})<br>`
@@ -551,7 +763,8 @@
             <b>${r.Recipient_Name} -> ${r.Food_Name}</b><br>
             Quantity: ${r.Quantity_Needed}<br>
             Requested: ${new Date(r.Request_Date).toLocaleDateString()}<br>
-            Location: ${r.Recipient_Location || '-'}<br>
+            Donor location: ${r.Donor_City || '-'}<br>
+            Recipient location: ${r.Recipient_Location || '-'}<br>
             ${assignedVolunteer}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -592,6 +805,26 @@
     loadRequestsWithAssignment();
     loadDeliveries();
     loadAdminNotifications();
+  }
+
+  function buildVolunteerOptions(volunteers, targetLocation) {
+    const normalizedTarget = (targetLocation || '').toLowerCase();
+    const availableVolunteers = volunteers.filter(v => v.Availability_Status === 'Available');
+    const nearby = availableVolunteers.filter(v => {
+      const area = (v.Area_Assigned || '').toLowerCase();
+      return normalizedTarget && area && (
+        area === normalizedTarget ||
+        area.includes(normalizedTarget) ||
+        normalizedTarget.includes(area)
+      );
+    });
+    const optionSource = nearby.length > 0 ? nearby : availableVolunteers;
+
+    return optionSource.map(v =>
+      `<option value="${v.Volunteer_ID}">
+        ${v.Name} - ${v.Area_Assigned}${nearby.includes(v) ? ' (nearby)' : ''}
+      </option>`
+    ).join('') || '<option value="">No available volunteers</option>';
   }
 
   async function loadDonors() {

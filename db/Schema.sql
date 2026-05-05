@@ -39,7 +39,7 @@ CREATE TABLE Donation_Details (
   Donation_ID   VARCHAR(10) PRIMARY KEY,
   Donation_Date DATE        NOT NULL,
   Pickup_Time   TIME        NOT NULL,
-  Status        ENUM('Pending','Collected') DEFAULT 'Pending',
+  Status        ENUM('Pending','Collected','Expired') DEFAULT 'Pending',
   Donor_ID      VARCHAR(10),
   Volunteer_ID  VARCHAR(10),
   FOREIGN KEY (Donor_ID) REFERENCES Donor(Donor_ID) ON DELETE CASCADE
@@ -49,10 +49,12 @@ CREATE TABLE Donation_Details (
 -- Primary Key: Food_ID
 -- No Foreign Keys
 CREATE TABLE Food_Item (
-  Food_ID    VARCHAR(10)  PRIMARY KEY,
-  Food_Name  VARCHAR(100) NOT NULL,
-  Food_Type  VARCHAR(50),
-  Shelf_Life VARCHAR(50)
+  Food_ID        VARCHAR(10)  PRIMARY KEY,
+  Food_Name      VARCHAR(100) NOT NULL,
+  Food_Type      VARCHAR(50),
+  Shelf_Life     VARCHAR(50),
+  Prepared_Time  DATETIME     NOT NULL,
+  Expiry_Time    DATETIME     NOT NULL
 );
 
 -- Table 4: Contains (Junction Table)
@@ -228,6 +230,14 @@ ADD FOREIGN KEY (Volunteer_ID) REFERENCES Volunteer(Volunteer_ID);
 -- Increased User_ID size to accommodate generated IDs
 ALTER TABLE Users MODIFY User_ID VARCHAR(20);
 
+-- Food safety support
+-- For an existing database, run:
+-- ALTER TABLE Donation_Details
+--   MODIFY Status ENUM('Pending','Collected','Expired') DEFAULT 'Pending';
+-- ALTER TABLE Food_Item
+--   ADD COLUMN Prepared_Time DATETIME NOT NULL AFTER Shelf_Life,
+--   ADD COLUMN Expiry_Time DATETIME NOT NULL AFTER Prepared_Time;
+
 -- Link each recipient request to the exact available donation item being ordered
 -- For an existing database, run:
 -- ALTER TABLE FoodRequests ADD COLUMN Donation_ID VARCHAR(10) AFTER Food_ID;
@@ -252,9 +262,9 @@ INSERT INTO Donor VALUES
 
 -- Insert Food Items
 INSERT INTO Food_Item VALUES
-('F1','Rice','Veg','6 months'),
-('F2','Bread','Veg','2 days'),
-('F3','Milk','Dairy','1 day');
+('F1','Rice','Veg','6 months','2026-05-01 06:00:00','2026-11-01 06:00:00'),
+('F2','Bread','Veg','2 days','2026-05-04 08:00:00','2026-05-06 08:00:00'),
+('F3','Milk','Dairy','1 day','2026-05-04 09:00:00','2026-05-05 09:00:00');
 
 -- Insert NGOs
 INSERT INTO NGO VALUES

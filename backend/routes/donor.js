@@ -9,6 +9,14 @@ router.get('/', (req, res) => {
   });
 });
 
+router.get('/:id', (req, res) => {
+  db.query('SELECT * FROM Donor WHERE Donor_ID = ?', [req.params.id], (err, results) => {
+    if (err) return res.status(500).json({ error: err.sqlMessage || err.message });
+    if (results.length === 0) return res.status(404).json({ error: 'Donor not found' });
+    res.json(results[0]);
+  });
+});
+
 router.post('/', (req, res) => {
   const { Donor_ID, Name, Phone, Email, Donor_Type, Street, City, Pincode } = req.body;
   db.query('INSERT INTO Donor VALUES (?,?,?,?,?,?,?,?)',

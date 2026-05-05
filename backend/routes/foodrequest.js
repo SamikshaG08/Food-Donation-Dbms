@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { isExpired, refreshExpiredDonationStatuses } = require('../utils/foodSafety');
 
 const query = (sql, params = []) =>
   new Promise((resolve, reject) => {
@@ -36,6 +37,80 @@ function chooseVolunteer(volunteers, targetLocation) {
     })[0] || null;
 }
 
+function parseQuantity(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)?$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    amount: Number(match[1]),
+    unit: (match[2] || '').toLowerCase()
+  };
+}
+
+function formatQuantity({ amount, unit }) {
+  return `${amount}${unit ? ` ${unit}` : ''}`;
+}
+
+function addQuantities(baseValue, deltaValue) {
+  const base = parseQuantity(baseValue);
+  const delta = parseQuantity(deltaValue);
+
+  if (!base || !delta) return null;
+  if (base.unit && delta.unit && base.unit !== delta.unit) return null;
+
+  return formatQuantity({
+    amount: Number((base.amount + delta.amount).toFixed(2)),
+    unit: base.unit || delta.unit
+  });
+}
+
+function subtractQuantities(baseValue, deltaValue) {
+  const base = parseQuantity(baseValue);
+  const delta = parseQuantity(deltaValue);
+
+  if (!base || !delta) return null;
+  if (base.unit && delta.unit && base.unit !== delta.unit) return null;
+
+  const nextAmount = Number((base.amount - delta.amount).toFixed(2));
+  if (nextAmount < 0) return null;
+
+  return formatQuantity({
+    amount: nextAmount,
+    unit: base.unit || delta.unit
+  });
+}
+
+function getQuantityValidationError(requestedValue, availableValue) {
+  const requested = parseQuantity(requestedValue);
+  const available = parseQuantity(availableValue);
+
+  if (!requested) {
+    return 'Enter quantity in a valid format like "1 kg" or "5 pcs".';
+  }
+
+  if (requested.amount <= 0) {
+    return 'Requested quantity must be greater than 0.';
+  }
+
+  if (!available) {
+    return null;
+  }
+
+  if (requested.unit && available.unit && requested.unit !== available.unit) {
+    return `Only ${formatQuantity(available)} is available. Please use the same unit.`;
+  }
+
+  if (requested.amount > available.amount) {
+    return `Only ${formatQuantity(available)} is available for this item.`;
+  }
+
+  return null;
+}
+
 async function assignRequestToVolunteer(request, volunteerId, assignmentMode) {
   const donorLocation = request.Donor_City || 'the donor area';
 
@@ -65,7 +140,10 @@ async function assignRequestToVolunteer(request, volunteerId, assignmentMode) {
 
   await query(
     `UPDATE Donation_Details
-     SET Volunteer_ID = ?
+     SET Volunteer_ID = ?, Status = CASE
+       WHEN Status = 'Pending' THEN 'Partially Fulfilled'
+       ELSE Status
+     END
      WHERE Donation_ID = ?`,
     [volunteerId, request.Donation_ID]
   );
@@ -104,18 +182,146 @@ async function assignRequestToVolunteer(request, volunteerId, assignmentMode) {
   );
 }
 
+async function updateDonationLifecycleStatus(donationId) {
+  const donationRows = await query(
+    `SELECT Status FROM Donation_Details WHERE Donation_ID = ?`,
+    [donationId]
+  );
+
+  if (!donationRows.length) return;
+
+  const currentStatus = donationRows[0].Status;
+  if (currentStatus === 'Collected' || currentStatus === 'Cancelled') {
+    return;
+  }
+
+  const items = await query(
+    `SELECT c.Quantity, fi.Expiry_Time
+     FROM Contains c
+     JOIN Food_Item fi ON fi.Food_ID = c.Food_ID
+     WHERE c.Donation_ID = ?`,
+    [donationId]
+  );
+
+  const requests = await query(
+    `SELECT Status
+     FROM FoodRequests
+     WHERE Donation_ID = ?`,
+    [donationId]
+  );
+
+  const hasOpenQuantity = items.some(item => {
+    const parsed = parseQuantity(item.Quantity);
+    return parsed && parsed.amount > 0 && !isExpired(item.Expiry_Time);
+  });
+
+  const hasActiveRequests = requests.some(request =>
+    ['Pending', 'Approved'].includes(request.Status)
+  );
+
+  let nextStatus = 'Pending';
+  if (!hasOpenQuantity) {
+    const hasUnexpiredItems = items.some(item => !isExpired(item.Expiry_Time));
+    nextStatus = hasUnexpiredItems || hasActiveRequests
+      ? 'Partially Fulfilled'
+      : 'Expired';
+  } else if (hasActiveRequests) {
+    nextStatus = 'Partially Fulfilled';
+  }
+
+  await query(
+    `UPDATE Donation_Details
+     SET Status = ?
+     WHERE Donation_ID = ?`,
+    [nextStatus, donationId]
+  );
+}
+
+async function releaseVolunteerIfIdle(volunteerId) {
+  if (!volunteerId) return;
+
+  const rows = await query(
+    `SELECT COUNT(*) AS OpenAssignments
+     FROM Distributes
+     WHERE Volunteer_ID = ?
+       AND Delivery_Status IN ('Pending', 'PickedUp', 'InTransit')`,
+    [volunteerId]
+  );
+
+  if (Number(rows[0]?.OpenAssignments || 0) === 0) {
+    await query(
+      `UPDATE Volunteer
+       SET Availability_Status = 'Available'
+       WHERE Volunteer_ID = ?`,
+      [volunteerId]
+    );
+  }
+}
+
+async function cancelOrRejectRequest(request, nextStatus) {
+  const quantityRows = await query(
+    `SELECT Quantity
+     FROM Contains
+     WHERE Donation_ID = ? AND Food_ID = ?`,
+    [request.Donation_ID, request.Food_ID]
+  );
+
+  if (quantityRows.length > 0) {
+    const restoredQuantity = addQuantities(quantityRows[0].Quantity, request.Quantity_Needed);
+    if (restoredQuantity) {
+      await query(
+        `UPDATE Contains
+         SET Quantity = ?
+         WHERE Donation_ID = ? AND Food_ID = ?`,
+        [restoredQuantity, request.Donation_ID, request.Food_ID]
+      );
+    }
+  }
+
+  const distRows = await query(
+    `SELECT Volunteer_ID
+     FROM Distributes
+     WHERE Food_ID = ? AND Recipient_ID = ?`,
+    [request.Food_ID, request.Recipient_ID]
+  );
+  const assignedVolunteerId = distRows[0]?.Volunteer_ID;
+
+  await query(
+    `UPDATE FoodRequests
+     SET Status = ?
+     WHERE Request_ID = ?`,
+    [nextStatus, request.Request_ID]
+  );
+
+  await query(
+    `UPDATE Distributes
+     SET Delivery_Status = 'Cancelled'
+     WHERE Food_ID = ? AND Recipient_ID = ?`,
+    [request.Food_ID, request.Recipient_ID]
+  );
+
+  await releaseVolunteerIfIdle(assignedVolunteerId);
+  await updateDonationLifecycleStatus(request.Donation_ID);
+}
+
 // GET all food requests (for admin monitoring)
 router.get('/', async (req, res) => {
   try {
+    await refreshExpiredDonationStatuses(query);
+
     const results = await query(
       `SELECT fr.*, r.Name as Recipient_Name,
               r.Location AS Recipient_Location,
-              f.Food_Name, f.Food_Type, f.Shelf_Life, c.Quantity AS Available_Quantity,
+              d.City AS Donor_City,
+              f.Food_Name, f.Food_Type, f.Shelf_Life, f.Prepared_Time, f.Expiry_Time,
+              c.Quantity AS Available_Quantity,
               dist.Volunteer_ID AS Assigned_Volunteer_ID,
               v.Name AS Assigned_Volunteer_Name
        FROM FoodRequests fr
        JOIN Recipient r ON fr.Recipient_ID = r.Recipient_ID
        JOIN Food_Item f ON fr.Food_ID = f.Food_ID
+       JOIN Donation_Details dd ON dd.Donation_ID = fr.Donation_ID
+       LEFT JOIN Donor d ON d.Donor_ID = dd.Donor_ID
        LEFT JOIN Contains c ON fr.Donation_ID = c.Donation_ID AND fr.Food_ID = c.Food_ID
        LEFT JOIN Distributes dist
          ON dist.Food_ID = fr.Food_ID
@@ -132,12 +338,18 @@ router.get('/', async (req, res) => {
 // GET requests by recipient
 router.get('/my/:recipient_id', async (req, res) => {
   try {
+    await refreshExpiredDonationStatuses(query);
+
     const results = await query(
-      `SELECT fr.*, f.Food_Name, f.Food_Type, f.Shelf_Life, c.Quantity AS Available_Quantity,
+      `SELECT fr.*, f.Food_Name, f.Food_Type, f.Shelf_Life, f.Prepared_Time, f.Expiry_Time,
+              d.City AS Donor_City,
+              c.Quantity AS Available_Quantity,
               dist.Volunteer_ID AS Assigned_Volunteer_ID,
               v.Name AS Assigned_Volunteer_Name
        FROM FoodRequests fr
        JOIN Food_Item f ON fr.Food_ID = f.Food_ID
+       JOIN Donation_Details dd ON dd.Donation_ID = fr.Donation_ID
+       LEFT JOIN Donor d ON d.Donor_ID = dd.Donor_ID
        LEFT JOIN Contains c ON fr.Donation_ID = c.Donation_ID AND fr.Food_ID = c.Food_ID
        LEFT JOIN Distributes dist
          ON dist.Food_ID = fr.Food_ID
@@ -162,25 +374,34 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    await refreshExpiredDonationStatuses(query);
+
     const available = await query(
-      `SELECT c.Donation_ID
+      `SELECT c.Donation_ID, c.Quantity, f.Expiry_Time
        FROM Contains c
        JOIN Donation_Details dd ON c.Donation_ID = dd.Donation_ID
+       JOIN Food_Item f ON f.Food_ID = c.Food_ID
        WHERE c.Donation_ID = ?
          AND c.Food_ID = ?
-         AND dd.Status = 'Pending'
-         AND NOT EXISTS (
-           SELECT 1
-           FROM FoodRequests fr
-           WHERE fr.Donation_ID = c.Donation_ID
-             AND fr.Food_ID = c.Food_ID
-             AND fr.Status IN ('Pending', 'Approved')
-         )`,
+         AND dd.Status IN ('Pending', 'Partially Fulfilled')
+         AND f.Expiry_Time > NOW()`,
       [Donation_ID, Food_ID]
     );
 
     if (!available.length) {
       return res.status(400).json({ error: 'This food item is no longer available.' });
+    }
+    if (isExpired(available[0].Expiry_Time)) {
+      return res.status(400).json({ error: 'This food item has expired and is no longer safe to request.' });
+    }
+
+    const quantityError = getQuantityValidationError(
+      Quantity_Needed,
+      available[0].Quantity
+    );
+
+    if (quantityError) {
+      return res.status(400).json({ error: quantityError });
     }
 
     await query(
@@ -190,10 +411,22 @@ router.post('/', async (req, res) => {
       [Request_ID, Recipient_ID, Food_ID, Donation_ID, Quantity_Needed]
     );
 
+    const remainingQuantity = subtractQuantities(available[0].Quantity, Quantity_Needed);
+    if (!remainingQuantity) {
+      return res.status(400).json({ error: 'Unable to reserve the requested quantity.' });
+    }
+
+    await query(
+      `UPDATE Contains
+       SET Quantity = ?
+       WHERE Donation_ID = ? AND Food_ID = ?`,
+      [remainingQuantity, Donation_ID, Food_ID]
+    );
+
     const rows = await query(
-      `SELECT fr.Request_ID, fr.Recipient_ID, fr.Food_ID, fr.Donation_ID, fr.Quantity_Needed,
+      `SELECT fr.Request_ID, fr.Recipient_ID, fr.Food_ID, fr.Donation_ID, fr.Quantity_Needed, fr.Status,
               r.Name AS Recipient_Name, r.Location AS Recipient_Location,
-              f.Food_Name, dd.Donor_ID, d.City AS Donor_City
+              f.Food_Name, f.Expiry_Time, dd.Donor_ID, d.City AS Donor_City
        FROM FoodRequests fr
        JOIN Recipient r ON r.Recipient_ID = fr.Recipient_ID
        JOIN Food_Item f ON f.Food_ID = fr.Food_ID
@@ -213,6 +446,8 @@ router.post('/', async (req, res) => {
     const volunteer = chooseVolunteer(volunteers, targetLocation);
 
     if (!volunteer) {
+      await updateDonationLifecycleStatus(Donation_ID);
+
       await query(
         `INSERT INTO AdminNotifications (Message, Type)
          VALUES (?, 'food_request')`,
@@ -222,7 +457,8 @@ router.post('/', async (req, res) => {
       );
 
       return res.json({
-        message: 'Food request submitted successfully! Waiting for volunteer assignment.'
+        message: 'Food request submitted successfully! Waiting for volunteer assignment.',
+        assignedVolunteer: null
       });
     }
 
@@ -231,9 +467,16 @@ router.post('/', async (req, res) => {
       : 'automatically assigned';
 
     await assignRequestToVolunteer(request, volunteer.Volunteer_ID, assignmentMode);
+    await updateDonationLifecycleStatus(Donation_ID);
 
     res.json({
-      message: `Food request submitted successfully! Volunteer ${volunteer.Name} (${volunteer.Volunteer_ID}) was ${assignmentMode}.`
+      message: `Food request submitted successfully! Volunteer ${volunteer.Name} (${volunteer.Volunteer_ID}) was ${assignmentMode}.`,
+      assignedVolunteer: {
+        Volunteer_ID: volunteer.Volunteer_ID,
+        Name: volunteer.Name,
+        Area_Assigned: volunteer.Area_Assigned,
+        assignmentMode
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.sqlMessage || err.message });
@@ -249,14 +492,17 @@ router.put('/assign', async (req, res) => {
   }
 
   try {
+    await refreshExpiredDonationStatuses(query);
+
     const rows = await query(
       `SELECT fr.Request_ID, fr.Recipient_ID, fr.Food_ID, fr.Donation_ID, fr.Quantity_Needed,
               r.Name AS Recipient_Name, r.Location AS Recipient_Location,
-              f.Food_Name, dd.Donor_ID
+              f.Food_Name, f.Expiry_Time, dd.Donor_ID, d.City AS Donor_City
        FROM FoodRequests fr
        JOIN Food_Item f ON fr.Food_ID = f.Food_ID
        JOIN Recipient r ON fr.Recipient_ID = r.Recipient_ID
        JOIN Donation_Details dd ON dd.Donation_ID = fr.Donation_ID
+       LEFT JOIN Donor d ON d.Donor_ID = dd.Donor_ID
        WHERE fr.Request_ID = ?`,
       [Request_ID]
     );
@@ -264,8 +510,15 @@ router.put('/assign', async (req, res) => {
     if (!rows.length) {
       return res.status(404).json({ error: 'Food request not found.' });
     }
+    if (rows[0].Status === 'Cancelled' || rows[0].Status === 'Expired') {
+      return res.status(400).json({ error: `This request is ${rows[0].Status.toLowerCase()} and can no longer be assigned.` });
+    }
+    if (isExpired(rows[0].Expiry_Time)) {
+      return res.status(400).json({ error: 'This food item has expired and can no longer be assigned.' });
+    }
 
     await assignRequestToVolunteer(rows[0], Volunteer_ID, 'manually assigned');
+    await updateDonationLifecycleStatus(rows[0].Donation_ID);
     res.json({ message: `Request ${Request_ID} assigned to volunteer ${Volunteer_ID}!` });
   } catch (err) {
     res.status(500).json({ error: err.sqlMessage || err.message });
@@ -277,10 +530,33 @@ router.put('/status', async (req, res) => {
   const { Request_ID, Status } = req.body;
 
   try {
-    await query(
-      `UPDATE FoodRequests SET Status = ? WHERE Request_ID = ?`,
-      [Status, Request_ID]
+    const rows = await query(
+      `SELECT fr.Request_ID, fr.Recipient_ID, fr.Food_ID, fr.Donation_ID, fr.Quantity_Needed, fr.Status
+       FROM FoodRequests fr
+       WHERE fr.Request_ID = ?`,
+      [Request_ID]
     );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Food request not found.' });
+    }
+
+    const current = rows[0];
+
+    if (['Rejected', 'Cancelled', 'Expired'].includes(current.Status)) {
+      return res.status(400).json({ error: `Request is already ${current.Status}.` });
+    }
+
+    if (['Rejected', 'Cancelled'].includes(Status)) {
+      await cancelOrRejectRequest(current, Status);
+    } else {
+      await query(
+        `UPDATE FoodRequests SET Status = ? WHERE Request_ID = ?`,
+        [Status, Request_ID]
+      );
+      await updateDonationLifecycleStatus(current.Donation_ID);
+    }
+
     res.json({ message: `Request ${Status}!` });
   } catch (err) {
     res.status(500).json({ error: err.sqlMessage || err.message });

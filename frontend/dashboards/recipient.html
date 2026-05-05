@@ -180,6 +180,16 @@
       font-weight: bold;
     }
     .submit-btn:hover { background: #40916c; }
+    .countdown {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: #fff3cd;
+      color: #856404;
+      font-size: 12px;
+      font-weight: bold;
+    }
     @media (max-width: 760px) {
       header {
         padding: 14px 16px;
@@ -292,24 +302,84 @@
   const recipientId = localStorage.getItem('ref_id');
   const username = localStorage.getItem('username');
   const API = 'http://localhost:3000/api';
+  const POLL_MS = 5000;
+  let pollHandle = null;
 
   window.onload = () => {
     document.getElementById('recName').textContent = username;
-    loadNotifications();
-    loadFoodItems();
-    loadMyRequests();
-    loadFoodDeliveries();
-    setInterval(() => {
-      loadNotifications();
-      loadFoodItems();
-      loadMyRequests();
-      loadFoodDeliveries();
-    }, 30000);
+    refreshRealtimeData();
+    startPolling();
   };
 
   function logout() {
     localStorage.clear();
     window.location.href = '../login.html';
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+      return;
+    }
+    refreshRealtimeData();
+    startPolling();
+  });
+
+  window.addEventListener('focus', () => {
+    refreshRealtimeData();
+    startPolling();
+  });
+
+  function startPolling() {
+    stopPolling();
+    pollHandle = setInterval(refreshRealtimeData, POLL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollHandle) return;
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
+
+  function refreshRealtimeData() {
+    loadNotifications();
+    loadFoodItems();
+    loadMyRequests();
+    loadFoodDeliveries();
+  }
+
+  function parseQuantity(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const match = normalized.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)?$/i);
+
+    if (!match) return null;
+
+    return {
+      amount: Number(match[1]),
+      unit: (match[2] || '').toLowerCase()
+    };
+  }
+
+  function formatQuantity(quantity) {
+    return `${quantity.amount}${quantity.unit ? ` ${quantity.unit}` : ''}`;
+  }
+
+  function formatExpiryCountdown(expiryTime) {
+    const expiry = new Date(expiryTime);
+    const diffMs = expiry.getTime() - Date.now();
+
+    if (Number.isNaN(expiry.getTime()) || diffMs <= 0) {
+      return 'Expired';
+    }
+
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+
+    if (days > 0) return `${days}d ${hours}h left`;
+    if (hours > 0) return `${hours}h ${minutes}m left`;
+    return `${Math.max(minutes, 1)}m left`;
   }
 
   // ─── NOTIFICATIONS ───────────────────────────────
@@ -368,8 +438,10 @@
         const option = document.createElement('option');
         option.value = f.Food_ID;
         option.dataset.donationId = f.Donation_ID;
+        option.dataset.availableQuantity = f.Quantity;
+        option.dataset.expiryTime = f.Expiry_Time;
         option.textContent =
-          `${f.Food_Name} (${f.Food_Type}) - ${f.Quantity} from ${f.Donor_Name || 'Donor'}${f.Donor_City ? ` in ${f.Donor_City}` : ''} [${f.Donation_ID}]`;
+          `${f.Food_Name} (${f.Food_Type}) - ${f.Quantity} from ${f.Donor_Name || 'Donor'}${f.Donor_City ? ` in ${f.Donor_City}` : ''} [${f.Donation_ID}] - expires in ${formatExpiryCountdown(f.Expiry_Time)}`;
         select.appendChild(option);
         return;
         select.innerHTML += `
@@ -387,6 +459,8 @@
     const foodId = document.getElementById('req_food').value;
     const selectedFood = document.getElementById('req_food').selectedOptions[0];
     const donationId = selectedFood ? selectedFood.dataset.donationId : '';
+    const availableQty = selectedFood ? selectedFood.dataset.availableQuantity : '';
+    const expiryTime = selectedFood ? selectedFood.dataset.expiryTime : '';
     const qty = document.getElementById('req_qty').value.trim();
     const msgEl = document.getElementById('reqMsg');
 
@@ -398,6 +472,42 @@
     if (!qty) {
       msgEl.style.color = 'red';
       msgEl.textContent = '⚠️ Please enter quantity needed!';
+      return;
+    }
+
+    const requestedQty = parseQuantity(qty);
+    const availableQuantity = parseQuantity(availableQty);
+
+    if (!requestedQty) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = 'Enter quantity like 1 kg or 5 pcs.';
+      return;
+    }
+
+    if (requestedQty.amount <= 0) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = 'Quantity must be greater than 0.';
+      return;
+    }
+
+    if (availableQuantity) {
+      if (requestedQty.unit && availableQuantity.unit &&
+          requestedQty.unit !== availableQuantity.unit) {
+        msgEl.style.color = 'red';
+        msgEl.textContent = `Only ${formatQuantity(availableQuantity)} is available. Please use the same unit.`;
+        return;
+      }
+
+      if (requestedQty.amount > availableQuantity.amount) {
+        msgEl.style.color = 'red';
+        msgEl.textContent = `Only ${formatQuantity(availableQuantity)} is available for this item.`;
+        return;
+      }
+    }
+
+    if (expiryTime && new Date(expiryTime).getTime() <= Date.now()) {
+      msgEl.style.color = 'red';
+      msgEl.textContent = 'This food item has expired and can no longer be requested.';
       return;
     }
 

@@ -202,21 +202,50 @@
   const volId = localStorage.getItem('ref_id');
   const username = localStorage.getItem('username');
   const API = 'http://localhost:3000/api';
+  const POLL_MS = 5000;
+  let pollHandle = null;
 
   window.onload = () => {
     document.getElementById('volName').textContent = username;
-    loadVolunteerInfo();
+    refreshRealtimeData();
     loadVolunteerNotifications(); // ← add this
-    loadDeliveries();
-    setInterval(() => {
-      loadVolunteerNotifications();
-      loadDeliveries();
-    }, 30000);
+    startPolling();
   };
 
   function logout() {
     localStorage.clear();
     window.location.href = '../login.html';
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+      return;
+    }
+    refreshRealtimeData();
+    startPolling();
+  });
+
+  window.addEventListener('focus', () => {
+    refreshRealtimeData();
+    startPolling();
+  });
+
+  function startPolling() {
+    stopPolling();
+    pollHandle = setInterval(refreshRealtimeData, POLL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollHandle) return;
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
+
+  function refreshRealtimeData() {
+    loadVolunteerInfo();
+    loadVolunteerNotifications();
+    loadDeliveries();
   }
 
   async function loadVolunteerInfo() {
